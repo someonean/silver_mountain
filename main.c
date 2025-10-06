@@ -48,6 +48,34 @@ void DrawGroundTiles()
 	}
 }
 
+void DrawObjectTiles()
+{
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		Color c;
+		switch(object_tiles.tiles[x][y])
+		{
+			case WALL: c = GRAY; break;
+			default: continue;
+		}
+		DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, c);
+	}
+}
+
+char collides_with_walls(Rectangle rec)
+{
+	for(int y = 0; y < object_tiles.hei; y++)
+	for(int x = 0; x < object_tiles.wid; x++)
+	{
+		if(object_tiles.tiles[x][y] != WALL) continue;
+
+		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
+		if(CheckCollisionRecs(rec, tilerec)) return 1;
+	}
+	return 0;
+}
+
 int main()
 {
 	InitWindow(WID, HEI, "Silver Mountain");
@@ -68,7 +96,7 @@ int main()
 	{
 		object_tiles.tiles[x] = malloc(sizeof(int)*object_tiles.hei);
 		for(int y = 0; y < object_tiles.hei; y++)
-			object_tiles.tiles[x][y] = rand()%100?WALL:EMPTY;
+			object_tiles.tiles[x][y] = rand()%100?EMPTY:WALL;
 	}
 
 	camera.offset = (Vector2){WID/2, HEI/2};
@@ -81,6 +109,7 @@ int main()
 		ClearBackground(BLACK);
 		float dt = GetFrameTime();
 
+		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
 			player.y -= dt*PLAYER_SPEED;
 		if(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
@@ -95,11 +124,16 @@ int main()
 		if(player.x+player.width > MAP_WID) player.x = MAP_WID-player.width;
 		if(player.y+player.height > MAP_HEI) player.y = MAP_HEI-player.height;
 
+		if(collides_with_walls(player) && !collides_with_walls(prev_player_pos))
+			player = prev_player_pos;
+		// roll player position back on collision with walls, but only
+		// if the player wasn't somehow already in a wall before
 
 		camera.target = (Vector2){player.x+player.width/2, player.y+player.height/2};
 
 		BeginMode2D(camera);
 		DrawGroundTiles();
+		DrawObjectTiles();
 		DrawRectangleRec(player, RED);
 		EndMode2D();
 
