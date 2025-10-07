@@ -12,7 +12,18 @@ Tilemap ground_tiles, object_tiles;
 // and the player interacts with the object tiles(walls, ores, etc.)
 
 enum GROUND_TILE_TYPES {DIRT, GRASS};
-enum OBJECT_TILE_TYPES {EMPTY, WALL};
+enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE};
+
+#undef GOLD // raylib defines this as a color, interfering with the enum
+enum ORE_TYPES {STONE, SILVER, GOLD};
+
+typedef struct
+{
+	int type;
+	int amount;
+} Ore;
+
+Ore **ore_map;
 
 // Window dimensions
 #define WID 800
@@ -48,6 +59,28 @@ void DrawGroundTiles()
 	}
 }
 
+void DrawOre(int x, int y, int type)
+{
+	switch(type)
+	{
+		case STONE:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			break;
+		case SILVER:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			// stone base
+
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, LIGHTGRAY);
+			// draw ores with a half-square in the middle of
+			// the stone base(until textures come in)
+			break;
+		case GOLD:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, YELLOW);
+			break;
+	}
+}
+
 void DrawObjectTiles()
 {
 	for(int x = 0; x < object_tiles.wid; x++)
@@ -57,9 +90,11 @@ void DrawObjectTiles()
 		switch(object_tiles.tiles[x][y])
 		{
 			case WALL: c = GRAY; break;
+			case ORE: DrawOre(x, y, ore_map[x][y].type);
 			default: continue;
 		}
-		DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, c);
+		if(object_tiles.tiles[x][y] != ORE)
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, c);
 	}
 }
 
@@ -68,7 +103,7 @@ char collides_with_walls(Rectangle rec)
 	for(int y = 0; y < object_tiles.hei; y++)
 	for(int x = 0; x < object_tiles.wid; x++)
 	{
-		if(object_tiles.tiles[x][y] != WALL) continue;
+		if(object_tiles.tiles[x][y] == EMPTY) continue;
 
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
 		if(CheckCollisionRecs(rec, tilerec)) return 1;
@@ -96,7 +131,23 @@ int main()
 	{
 		object_tiles.tiles[x] = malloc(sizeof(int)*object_tiles.hei);
 		for(int y = 0; y < object_tiles.hei; y++)
-			object_tiles.tiles[x][y] = rand()%100?EMPTY:WALL;
+			object_tiles.tiles[x][y] = rand()%100?EMPTY:ORE;
+	}
+
+	ore_map = malloc(sizeof(Ore*)*object_tiles.wid);
+	for(int x = 0; x < object_tiles.wid; x++)
+	{
+		ore_map[x] = malloc(sizeof(Ore)*object_tiles.hei);
+		for(int y = 0; y < object_tiles.hei; y++)
+		{
+			ore_map[x][y].type = rand()%3;
+			switch(ore_map[x][y].type)
+			{
+				case STONE: ore_map[x][y].amount = 10000; break;
+				case SILVER: ore_map[x][y].amount = 100; break;
+				case GOLD: ore_map[x][y].amount = 10; break;
+			}
+		}
 	}
 
 	camera.offset = (Vector2){WID/2, HEI/2};
