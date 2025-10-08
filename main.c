@@ -98,7 +98,7 @@ void DrawObjectTiles()
 	}
 }
 
-char collides_with_walls(Rectangle rec)
+char collide_with_walls(Rectangle *player, Rectangle oldrec)
 {
 	for(int y = 0; y < object_tiles.hei; y++)
 	for(int x = 0; x < object_tiles.wid; x++)
@@ -106,7 +106,29 @@ char collides_with_walls(Rectangle rec)
 		if(object_tiles.tiles[x][y] == EMPTY) continue;
 
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
-		if(CheckCollisionRecs(rec, tilerec)) return 1;
+		if(CheckCollisionRecs(*player, tilerec))
+		{
+			char skip_x = 0, skip_y = 0;
+			if(oldrec.x < tilerec.x+tilerec.width && oldrec.x+oldrec.width > tilerec.x)
+				skip_x = 1;
+			if(oldrec.y < tilerec.y+tilerec.height && oldrec.y+oldrec.height > tilerec.y)
+				skip_y = 1;
+
+			if(!skip_x)
+			{
+				if(player->x > tilerec.x) // just to determine whether we're coming from the left
+					player->x = tilerec.x+tilerec.width; // no
+				else
+					player->x = tilerec.x-player->width; // yes
+			}
+			if(!skip_y)
+			{
+				if(player->y > tilerec.y)
+					player->y = tilerec.y+tilerec.height;
+				else
+					player->y = tilerec.y-player->height;
+			}
+		}
 	}
 	return 0;
 }
@@ -170,15 +192,12 @@ int main()
 		if(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
 			player.x += dt*PLAYER_SPEED;
 
+		collide_with_walls(&player, prev_player_pos);
+
 		if(player.x < 0) player.x = 0;
 		if(player.y < 0) player.y = 0;
 		if(player.x+player.width > MAP_WID) player.x = MAP_WID-player.width;
 		if(player.y+player.height > MAP_HEI) player.y = MAP_HEI-player.height;
-
-		if(collides_with_walls(player) && !collides_with_walls(prev_player_pos))
-			player = prev_player_pos;
-		// roll player position back on collision with walls, but only
-		// if the player wasn't somehow already in a wall before
 
 		camera.target = (Vector2){player.x+player.width/2, player.y+player.height/2};
 
