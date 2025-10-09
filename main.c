@@ -43,6 +43,8 @@ Rectangle player = {0, 0, 50, 100}; // x, y, w, h
 // Player camera
 Camera2D camera = {0};
 
+int coins = 0;
+
 void DrawGroundTiles()
 {
 	for(int x = 0; x < ground_tiles.wid; x++)
@@ -96,6 +98,13 @@ void DrawObjectTiles()
 		if(object_tiles.tiles[x][y] != ORE)
 			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, c);
 	}
+}
+
+#define COIN_WIDGET_SCALE 20
+void DisplayCoins()
+{
+	DrawCircle(COIN_WIDGET_SCALE, COIN_WIDGET_SCALE, COIN_WIDGET_SCALE, YELLOW);
+	DrawText(TextFormat("%d", coins), COIN_WIDGET_SCALE*2 + 5, 0, COIN_WIDGET_SCALE*2, WHITE);
 }
 
 char collide_with_walls(Rectangle *player, Rectangle oldrec)
@@ -182,6 +191,11 @@ int main()
 		ClearBackground(BLACK);
 		float dt = GetFrameTime();
 
+		if(IsKeyPressed(KEY_C))
+			coins++;
+		if(IsKeyPressed(KEY_X))
+			coins--;
+
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
 			player.y -= dt*PLAYER_SPEED;
@@ -206,6 +220,10 @@ int main()
 		DrawObjectTiles();
 		DrawRectangleRec(player, RED);
 		EndMode2D();
+
+		DisplayCoins();
+		// outside of camera-affected code segment, so that it always
+		// displays on the top left corner of the screen
 
 		EndDrawing();
 	}
