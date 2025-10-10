@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <raymath.h>
 #include <stdlib.h>
 
 typedef struct
@@ -30,6 +31,19 @@ Ore **ore_map;
 #define HEI 600
 
 Rectangle player = {0, 0, 50, 100}; // x, y, w, h
+
+enum player_modes {MOVING, MINING};
+int player_mode = MOVING;
+
+
+typedef struct
+{
+	int x;
+	int y;
+} int2; // for integer coordinates
+int2 mining_target = {-1,-1};
+
+float time_since_last_mined, mining_delay = 1.0;
 
 #define PLAYER_SPEED 500.0 // pixels per second
 
@@ -144,6 +158,10 @@ char collide_with_walls(Rectangle *player, Rectangle oldrec)
 
 int main()
 {
+	char *ore_name; int prev_amount;
+	// both vars are for displaying the "Ore x amount" message at the bottom
+	// when mining
+
 	InitWindow(WID, HEI, "Silver Mountain");
 	SetTargetFPS(60);
 
@@ -215,6 +233,26 @@ int main()
 
 		camera.target = (Vector2){player.x+player.width/2, player.y+player.height/2};
 
+		if(player.x != prev_player_pos.x || player.y != prev_player_pos.y)
+			player_mode = MOVING;
+		if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+		{
+			Vector2 mpos = GetMousePosition();
+			mpos = Vector2Add(mpos, camera.target);
+			mpos = Vector2Subtract(mpos, camera.offset);
+			int tilex, tiley;
+			tilex = (int)(mpos.x/SCALE);
+			tiley = (int)(mpos.y/SCALE);
+
+			if(Vector2Distance(mpos, camera.target) <= 2*SCALE)
+			if(object_tiles.tiles[tilex][tiley] == ORE)
+			{
+				player_mode = MINING;
+				mining_target = (int2){tilex, tiley};
+				time_since_last_mined = mining_delay;
+			}
+		}
+
 		BeginMode2D(camera);
 		DrawGroundTiles();
 		DrawObjectTiles();
@@ -224,6 +262,43 @@ int main()
 		DisplayCoins();
 		// outside of camera-affected code segment, so that it always
 		// displays on the top left corner of the screen
+
+		if(player_mode == MINING)
+		{
+			if(time_since_last_mined >= mining_delay)
+			{
+				time_since_last_mined = 0;
+				int2 t = mining_target;
+				ore_map[t.x][t.y].amount--;
+
+				prev_amount = ore_map[t.x][t.y].amount + 1;
+				switch(ore_map[t.x][t.y].type)
+				{
+					case STONE:
+						coins++;
+						ore_name = "Stone";
+						break;
+					case SILVER:
+						coins += 100;
+						ore_name = "Silver";
+						break;
+					case GOLD:
+						coins += 1000;
+						ore_name = "Gold";
+						break;
+				}
+				if(ore_map[t.x][t.y].amount <= 0)
+				{
+					ore_map[t.x][t.y].type = STONE;
+					ore_map[t.x][t.y].amount = 10000;
+					player_mode = MOVING;
+				}
+
+			}
+
+			DrawText(TextFormat("%s x %d", ore_name, prev_amount), WID/2, HEI-20, 20, YELLOW);
+			time_since_last_mined += GetFrameTime();
+		}
 
 		EndDrawing();
 	}
