@@ -13,7 +13,7 @@ Tilemap ground_tiles, object_tiles;
 // and the player interacts with the object tiles(walls, ores, etc.)
 
 enum GROUND_TILE_TYPES {DIRT, GRASS};
-enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE};
+enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, SILVER, GOLD};
@@ -34,7 +34,7 @@ Rectangle player = {0, 0, 50, 100}; // x, y, w, h
 
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
-
+int depth = 0;
 
 typedef struct
 {
@@ -106,6 +106,7 @@ void DrawObjectTiles()
 		switch(object_tiles.tiles[x][y])
 		{
 			case WALL: c = GRAY; break;
+			case STAIRS: c = BLACK; break;
 			case ORE: DrawOre(x, y, ore_map[x][y].type);
 			default: continue;
 		}
@@ -121,12 +122,13 @@ void DisplayCoins()
 	DrawText(TextFormat("%d", coins), COIN_WIDGET_SCALE*2 + 5, 0, COIN_WIDGET_SCALE*2, WHITE);
 }
 
-char collide_with_walls(Rectangle *player, Rectangle oldrec)
+void collide_with_walls(Rectangle *player, Rectangle oldrec)
 {
 	for(int y = 0; y < object_tiles.hei; y++)
 	for(int x = 0; x < object_tiles.wid; x++)
 	{
 		if(object_tiles.tiles[x][y] == EMPTY) continue;
+		if(object_tiles.tiles[x][y] == STAIRS) continue;
 
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
 		if(CheckCollisionRecs(*player, tilerec))
@@ -153,7 +155,57 @@ char collide_with_walls(Rectangle *player, Rectangle oldrec)
 			}
 		}
 	}
+}
+
+char touches_stairs(Rectangle rec)
+{
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] != STAIRS) continue;
+		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
+		if(CheckCollisionRecs(rec, tilerec)) return 1;
+	}
 	return 0;
+}
+
+void descend_stairs()
+{
+	for(int x = 0; x < ground_tiles.wid; x++)
+	{
+		for(int y = 0; y < ground_tiles.hei; y++)
+			ground_tiles.tiles[x][y] = DIRT;
+	}
+	for(int x = 0; x < object_tiles.wid; x++)
+	{
+		for(int y = 0; y < object_tiles.hei; y++)
+			object_tiles.tiles[x][y] = rand()%100?EMPTY:ORE;
+	}
+	for(int x = 0; x < object_tiles.wid; x++)
+	{
+		for(int y = 0; y < object_tiles.hei; y++)
+		{
+			ore_map[x][y].type = rand()%3;
+			switch(ore_map[x][y].type)
+			{
+				case STONE: ore_map[x][y].amount = 10000; break;
+				case SILVER: ore_map[x][y].amount = 100; break;
+				case GOLD: ore_map[x][y].amount = 10; break;
+			}
+		}
+	}
+
+	player.x = player.y = 0;
+	object_tiles.tiles[0][0] = EMPTY;
+	object_tiles.tiles[0][1] = EMPTY;
+
+	int stairs_x = 1 + rand()%(object_tiles.wid-2);
+	int stairs_y = 1 + rand()%(object_tiles.hei-3);
+	object_tiles.tiles[stairs_x][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
+	depth++;
 }
 
 int main()
@@ -171,7 +223,7 @@ int main()
 	{
 		ground_tiles.tiles[x] = malloc(sizeof(int)*ground_tiles.hei);
 		for(int y = 0; y < ground_tiles.hei; y++)
-			ground_tiles.tiles[x][y] = rand()%2;
+			ground_tiles.tiles[x][y] = GRASS;
 	}
 
 	object_tiles.wid = object_tiles.hei = 100;
@@ -180,24 +232,19 @@ int main()
 	{
 		object_tiles.tiles[x] = malloc(sizeof(int)*object_tiles.hei);
 		for(int y = 0; y < object_tiles.hei; y++)
-			object_tiles.tiles[x][y] = rand()%100?EMPTY:ORE;
+			object_tiles.tiles[x][y] = EMPTY;
 	}
 
 	ore_map = malloc(sizeof(Ore*)*object_tiles.wid);
 	for(int x = 0; x < object_tiles.wid; x++)
-	{
 		ore_map[x] = malloc(sizeof(Ore)*object_tiles.hei);
-		for(int y = 0; y < object_tiles.hei; y++)
-		{
-			ore_map[x][y].type = rand()%3;
-			switch(ore_map[x][y].type)
-			{
-				case STONE: ore_map[x][y].amount = 10000; break;
-				case SILVER: ore_map[x][y].amount = 100; break;
-				case GOLD: ore_map[x][y].amount = 10; break;
-			}
-		}
-	}
+
+	int stairs_x = 10;
+	int stairs_y = 10;
+	object_tiles.tiles[stairs_x][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 
 	camera.offset = (Vector2){WID/2, HEI/2};
 	camera.rotation = 0;
@@ -206,7 +253,10 @@ int main()
 	while(!WindowShouldClose())
 	{
 		BeginDrawing();
-		ClearBackground(BLACK);
+		if(depth == 0)
+			ClearBackground(SKYBLUE);
+		else
+			ClearBackground(BLACK);
 		float dt = GetFrameTime();
 
 		if(IsKeyPressed(KEY_C))
@@ -299,6 +349,8 @@ int main()
 			DrawText(TextFormat("%s x %d", ore_name, prev_amount), WID/2, HEI-20, 20, YELLOW);
 			time_since_last_mined += GetFrameTime();
 		}
+
+		if(touches_stairs(player)) descend_stairs();
 
 		EndDrawing();
 	}
