@@ -17,11 +17,15 @@ enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, SILVER, GOLD};
+char *ore_names[] = {"Stone", "Silver", "Gold"}; // same order as in the enum
+int ore_values[] = {1, 10, 100};
+int ore_durabilities[] = {1, 10, 50}; // more valuable ores are harder to mine
 
 typedef struct
 {
 	int type;
 	int amount;
+	int wear; // how worn down the top ore piece is(goes from X to 0)
 } Ore;
 
 Ore **ore_map;
@@ -44,6 +48,7 @@ typedef struct
 int2 mining_target = {-1,-1};
 
 float time_since_last_mined, mining_delay = 1.0;
+int mining_power = 10;
 
 #define PLAYER_SPEED 500.0 // pixels per second
 
@@ -192,6 +197,7 @@ void descend_stairs()
 				case SILVER: ore_map[x][y].amount = 100; break;
 				case GOLD: ore_map[x][y].amount = 10; break;
 			}
+			ore_map[x][y].wear = ore_durabilities[ore_map[x][y].type];
 		}
 	}
 
@@ -206,6 +212,12 @@ void descend_stairs()
 	object_tiles.tiles[stairs_x+1][stairs_y] = WALL;
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 	depth++;
+}
+
+void DrawWearBar(int wear, int max_durability)
+{
+	DrawRectangle(WID/3, HEI-40, WID/3, 20, GRAY);
+	DrawRectangle(WID/3, HEI-40, wear*(WID/3)/max_durability, 20, GREEN);
 }
 
 int main()
@@ -300,6 +312,8 @@ int main()
 				player_mode = MINING;
 				mining_target = (int2){tilex, tiley};
 				time_since_last_mined = mining_delay;
+				prev_amount = ore_map[tilex][tiley].amount;
+				ore_name = ore_names[ore_map[tilex][tiley].type];
 			}
 		}
 
@@ -315,39 +329,29 @@ int main()
 
 		if(player_mode == MINING)
 		{
+			int2 t = mining_target;
 			if(time_since_last_mined >= mining_delay)
 			{
 				time_since_last_mined = 0;
-				int2 t = mining_target;
-				ore_map[t.x][t.y].amount--;
-
-				prev_amount = ore_map[t.x][t.y].amount + 1;
-				switch(ore_map[t.x][t.y].type)
+				ore_map[t.x][t.y].wear -= mining_power;
+				if(ore_map[t.x][t.y].wear <= 0)
 				{
-					case STONE:
-						coins++;
-						ore_name = "Stone";
-						break;
-					case SILVER:
-						coins += 100;
-						ore_name = "Silver";
-						break;
-					case GOLD:
-						coins += 1000;
-						ore_name = "Gold";
-						break;
+					ore_map[t.x][t.y].wear = ore_durabilities[ore_map[t.x][t.y].type];
+					ore_map[t.x][t.y].amount--;
+					prev_amount = ore_map[t.x][t.y].amount;
+					coins += ore_values[ore_map[t.x][t.y].type];
+					if(ore_map[t.x][t.y].amount <= 0)
+					{
+						ore_map[t.x][t.y].type = STONE;
+						ore_map[t.x][t.y].amount = 10000;
+						ore_map[t.x][t.y].wear = ore_durabilities[STONE];
+						player_mode = MOVING;
+					}
 				}
-				if(ore_map[t.x][t.y].amount <= 0)
-				{
-					ore_map[t.x][t.y].type = STONE;
-					ore_map[t.x][t.y].amount = 10000;
-					player_mode = MOVING;
-				}
-
 			}
-
-			DrawText(TextFormat("%s x %d", ore_name, prev_amount), WID/2, HEI-20, 20, YELLOW);
-			time_since_last_mined += GetFrameTime();
+			DrawText(TextFormat("%s x %d", ore_name, prev_amount), WID/3, HEI-20, 20, YELLOW);
+			DrawWearBar(ore_map[t.x][t.y].wear, ore_durabilities[ore_map[t.x][t.y].type]);
+			time_since_last_mined += dt;
 		}
 
 		if(touches_stairs(player)) descend_stairs();
