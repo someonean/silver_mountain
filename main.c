@@ -308,6 +308,7 @@ int main()
 
 			if(Vector2Distance(mpos, camera.target) <= 2*SCALE)
 			if(object_tiles.tiles[tilex][tiley] == ORE)
+			if(player_mode != MINING)
 			{
 				player_mode = MINING;
 				mining_target = (int2){tilex, tiley};
