@@ -34,7 +34,7 @@ Ore **ore_map;
 #define WID 800
 #define HEI 600
 
-Rectangle player = {0, 0, 50, 100}; // x, y, w, h
+Rectangle player = {0, 0, 50, 50}; // x, y, w, h
 
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
@@ -207,9 +207,10 @@ void descend_stairs()
 
 	int stairs_x = 1 + rand()%(object_tiles.wid-2);
 	int stairs_y = 1 + rand()%(object_tiles.hei-3);
-	object_tiles.tiles[stairs_x][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x-1][stairs_y] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 	depth++;
 }
@@ -253,9 +254,10 @@ int main()
 
 	int stairs_x = 10;
 	int stairs_y = 10;
-	object_tiles.tiles[stairs_x][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x-1][stairs_y] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 
 	camera.offset = (Vector2){WID/2, HEI/2};
@@ -270,11 +272,6 @@ int main()
 		else
 			ClearBackground(BLACK);
 		float dt = GetFrameTime();
-
-		if(IsKeyPressed(KEY_C))
-			coins++;
-		if(IsKeyPressed(KEY_X))
-			coins--;
 
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
