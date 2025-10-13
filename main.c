@@ -328,9 +328,9 @@ int main()
 		if(player_mode == MINING)
 		{
 			int2 t = mining_target;
-			if(time_since_last_mined >= mining_delay)
+			while(time_since_last_mined >= mining_delay)
 			{
-				time_since_last_mined = 0;
+				time_since_last_mined -= mining_delay;
 				ore_map[t.x][t.y].wear -= mining_power;
 				if(ore_map[t.x][t.y].wear <= 0)
 				{
@@ -344,6 +344,8 @@ int main()
 						ore_map[t.x][t.y].amount = 10000;
 						ore_map[t.x][t.y].wear = ore_durabilities[STONE];
 						player_mode = MOVING;
+						time_since_last_mined = 0;
+						break;
 					}
 				}
 			}
