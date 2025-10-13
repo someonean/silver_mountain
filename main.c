@@ -48,7 +48,12 @@ typedef struct
 int2 mining_target = {-1,-1};
 
 float time_since_last_mined, mining_delay = 1.0;
+int mining_speed = 1;
 int mining_power = 10;
+
+// upgrade costs
+int mining_speed_upgrade = 1;
+int mining_power_upgrade = 1;
 
 #define PLAYER_SPEED 500.0 // pixels per second
 
@@ -221,6 +226,36 @@ void DrawWearBar(int wear, int max_durability)
 	DrawRectangle(WID/3, HEI-40, wear*(WID/3)/max_durability, 20, GREEN);
 }
 
+void DisplayUpgradeCosts()
+{
+	Color c = (coins >= mining_speed_upgrade)? WHITE : RED;
+	DrawText(TextFormat("F to upgrade mining speed from %d HPS for %d coins", mining_speed, mining_speed_upgrade), 0, COIN_WIDGET_SCALE*2, 20, c);
+	c = (coins >= mining_power_upgrade)? WHITE : RED;
+	DrawText(TextFormat("P to upgrade mining power from %d for %d coins", mining_power, mining_power_upgrade), 0, COIN_WIDGET_SCALE*2+20, 20, c);
+}
+
+void UpgradeMiningSpeed()
+{
+	if(coins < mining_speed_upgrade) return;
+	coins -= mining_speed_upgrade;
+
+	mining_speed++; mining_delay = 1.0/mining_speed;
+	int cost_increase = mining_speed_upgrade*5/100; // 5%
+	if(cost_increase < 1) cost_increase = 1;
+	mining_speed_upgrade += cost_increase;
+}
+
+void UpgradeMiningPower()
+{
+	if(coins < mining_power_upgrade) return;
+	coins -= mining_power_upgrade;
+
+	mining_power++;
+	int cost_increase = mining_power_upgrade*5/100; // 5%
+	if(cost_increase < 1) cost_increase = 1;
+	mining_power_upgrade += cost_increase;
+}
+
 int main()
 {
 	char *ore_name; int prev_amount;
@@ -273,6 +308,11 @@ int main()
 			ClearBackground(BLACK);
 		float dt = GetFrameTime();
 
+		if(IsKeyPressed(KEY_F))
+			UpgradeMiningSpeed();
+		if(IsKeyPressed(KEY_P))
+			UpgradeMiningPower();
+
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
 			player.y -= dt*PLAYER_SPEED;
@@ -322,8 +362,7 @@ int main()
 		EndMode2D();
 
 		DisplayCoins();
-		// outside of camera-affected code segment, so that it always
-		// displays on the top left corner of the screen
+		DisplayUpgradeCosts();
 
 		if(player_mode == MINING)
 		{
