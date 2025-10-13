@@ -49,11 +49,13 @@ int2 mining_target = {-1,-1};
 
 float time_since_last_mined, mining_delay = 1.0;
 int mining_speed = 1;
-int mining_power = 10;
+int mining_power = 1;
+int mining_skill = 1; float ore_value_multiplier = 1.0;
 
 // upgrade costs
 int mining_speed_upgrade = 1;
 int mining_power_upgrade = 1;
+int mining_skill_upgrade = 1;
 
 #define PLAYER_SPEED 500.0 // pixels per second
 
@@ -232,6 +234,8 @@ void DisplayUpgradeCosts()
 	DrawText(TextFormat("F to upgrade mining speed from %d HPS for %d coins", mining_speed, mining_speed_upgrade), 0, COIN_WIDGET_SCALE*2, 20, c);
 	c = (coins >= mining_power_upgrade)? WHITE : RED;
 	DrawText(TextFormat("P to upgrade mining power from %d for %d coins", mining_power, mining_power_upgrade), 0, COIN_WIDGET_SCALE*2+20, 20, c);
+	c = (coins >= mining_skill_upgrade)? WHITE : RED;
+	DrawText(TextFormat("X to upgrade mining skill from %d for %d coins", mining_skill, mining_skill_upgrade), 0, COIN_WIDGET_SCALE*2+40, 20, c);
 }
 
 void UpgradeMiningSpeed()
@@ -254,6 +258,17 @@ void UpgradeMiningPower()
 	int cost_increase = mining_power_upgrade*5/100; // 5%
 	if(cost_increase < 1) cost_increase = 1;
 	mining_power_upgrade += cost_increase;
+}
+
+void UpgradeMiningSkill()
+{
+	if(coins < mining_skill_upgrade) return;
+	coins -= mining_skill_upgrade;
+
+	mining_skill++; ore_value_multiplier *= 1.01; // ores yield 1% more coins
+	int cost_increase = mining_skill_upgrade*5/100; // 5%
+	if(cost_increase < 1) cost_increase = 1;
+	mining_skill_upgrade += cost_increase;
 }
 
 int main()
@@ -312,6 +327,8 @@ int main()
 			UpgradeMiningSpeed();
 		if(IsKeyPressed(KEY_P))
 			UpgradeMiningPower();
+		if(IsKeyPressed(KEY_X))
+			UpgradeMiningSkill();
 
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
@@ -376,7 +393,7 @@ int main()
 					ore_map[t.x][t.y].wear = ore_durabilities[ore_map[t.x][t.y].type];
 					ore_map[t.x][t.y].amount--;
 					prev_amount = ore_map[t.x][t.y].amount;
-					coins += ore_values[ore_map[t.x][t.y].type];
+					coins += ore_value_multiplier*ore_values[ore_map[t.x][t.y].type];
 					if(ore_map[t.x][t.y].amount <= 0)
 					{
 						ore_map[t.x][t.y].type = STONE;
