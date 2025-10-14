@@ -16,10 +16,10 @@ enum GROUND_TILE_TYPES {DIRT, GRASS};
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {STONE, SILVER, GOLD};
-char *ore_names[] = {"Stone", "Silver", "Gold"}; // same order as in the enum
-int ore_values[] = {1, 10, 100};
-int ore_durabilities[] = {1, 10, 50}; // more valuable ores are harder to mine
+enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD};
+char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold"}; // same order as in the enum
+int ore_values[] = {1, 10, 20, 50, 100};
+int ore_durabilities[] = {1, 10, 20, 50, 100}; // more valuable ores are harder to mine
 
 typedef struct
 {
@@ -93,6 +93,14 @@ void DrawOre(int x, int y, int type)
 	{
 		case STONE:
 			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			break;
+		case BRONZE:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BROWN);
+			break;
+		case IRON:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BLACK);
 			break;
 		case SILVER:
 			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
@@ -197,11 +205,13 @@ void descend_stairs()
 	{
 		for(int y = 0; y < object_tiles.hei; y++)
 		{
-			ore_map[x][y].type = rand()%3;
+			ore_map[x][y].type = rand()%5;
 			switch(ore_map[x][y].type)
 			{
 				case STONE: ore_map[x][y].amount = 10000; break;
-				case SILVER: ore_map[x][y].amount = 100; break;
+				case BRONZE: ore_map[x][y].amount = 1000; break;
+				case IRON: ore_map[x][y].amount = 100; break;
+				case SILVER: ore_map[x][y].amount = 20; break;
 				case GOLD: ore_map[x][y].amount = 10; break;
 			}
 			ore_map[x][y].wear = ore_durabilities[ore_map[x][y].type];
