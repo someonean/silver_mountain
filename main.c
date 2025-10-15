@@ -13,7 +13,7 @@ Tilemap ground_tiles, object_tiles;
 // and the player interacts with the object tiles(walls, ores, etc.)
 
 enum GROUND_TILE_TYPES {DIRT, GRASS};
-enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS};
+enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD};
@@ -39,6 +39,8 @@ Rectangle player = {0, 0, 50, 50}; // x, y, w, h
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
 int depth = 0;
+int tier = 0; // surface layer is of tier 0
+int mine_floor = 1; // with each floor the player descends, this number gets larger
 
 typedef struct
 {
@@ -127,6 +129,7 @@ void DrawObjectTiles()
 		{
 			case WALL: c = GRAY; break;
 			case STAIRS: c = BLACK; break;
+			case ENTRANCE: c = DARKBROWN; break;
 			case ORE: DrawOre(x, y, ore_map[x][y].type);
 			default: continue;
 		}
@@ -149,6 +152,7 @@ void collide_with_walls(Rectangle *player, Rectangle oldrec)
 	{
 		if(object_tiles.tiles[x][y] == EMPTY) continue;
 		if(object_tiles.tiles[x][y] == STAIRS) continue;
+		if(object_tiles.tiles[x][y] == ENTRANCE) continue;
 
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
 		if(CheckCollisionRecs(*player, tilerec))
@@ -189,6 +193,66 @@ char touches_stairs(Rectangle rec)
 	return 0;
 }
 
+char touches_entrance(Rectangle rec)
+{
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] != ENTRANCE) continue;
+		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
+		if(CheckCollisionRecs(rec, tilerec)) return 1;
+	}
+	return 0;
+}
+
+char is_9by9_obstructed(int center_x, int center_y)
+{
+	for(int i = -1; i <= 1; i++)
+	for(int j = -1; j <= 1; j++)
+	{
+		int nx = center_x + i;
+		int ny = center_y + j;
+		if(nx < 0 || nx >= object_tiles.wid)
+			return 1;
+		if(ny < 0 || ny >= object_tiles.hei)
+			return 1;
+		if(object_tiles.tiles[nx][ny] == WALL) return 1;
+		if(object_tiles.tiles[nx][ny] == STAIRS) return 1;
+		if(object_tiles.tiles[nx][ny] == ENTRANCE) return 1;
+	}
+	return 0;
+}
+
+void place_random_entrance()
+{
+	int ent_x = 0, ent_y = 0;
+	while(is_9by9_obstructed(ent_x, ent_y))
+	{
+		ent_x = 1 + rand()%(object_tiles.wid-2);
+		ent_y = 1 + rand()%(object_tiles.hei-2);
+	}
+	for(int i = -1; i <= 1; i++)
+	for(int j = -1; j <= 1; j++)
+			object_tiles.tiles[ent_x+i][ent_y+j] = WALL;
+	object_tiles.tiles[ent_x][ent_y] = ENTRANCE;
+	object_tiles.tiles[ent_x][ent_y+1] = EMPTY;
+}
+
+void place_random_stairs()
+{
+	int stairs_x = 0, stairs_y = 0;
+	while(is_9by9_obstructed(stairs_x, stairs_y))
+	{
+		stairs_x = 1 + rand()%(object_tiles.wid-2);
+		stairs_y = 1 + rand()%(object_tiles.hei-2);
+	}
+	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
+	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
+	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
+}
+
 void descend_stairs()
 {
 	for(int x = 0; x < ground_tiles.wid; x++)
@@ -218,18 +282,23 @@ void descend_stairs()
 		}
 	}
 
+	depth++;
+	mine_floor++;
+
+	int next_tier_chance = 0;
+	// measured in promils(1/1000) instead of percents for greater precision
+
+	if(mine_floor > 10)
+	{
+		next_tier_chance = (mine_floor-10)*10;
+	}
+
+	place_random_stairs();
+	if(rand()%1000 < next_tier_chance)
+		place_random_entrance();
+
 	player.x = player.y = 0;
 	object_tiles.tiles[0][0] = EMPTY;
-	object_tiles.tiles[0][1] = EMPTY;
-
-	int stairs_x = 1 + rand()%(object_tiles.wid-2);
-	int stairs_y = 1 + rand()%(object_tiles.hei-3);
-	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
-	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
-	depth++;
 }
 
 void DrawWearBar(int wear, int max_durability)
@@ -281,6 +350,19 @@ void UpgradeMiningSkill()
 	mining_skill_upgrade += cost_increase;
 }
 
+void DrawCompass() // for now, to make testing easier
+{
+	Vector2 player_pos = (Vector2){player.x+player.width/2, player.y+player.height/2};
+	Vector2 stairs_pos;
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.wid; y++)
+	if(object_tiles.tiles[x][y] == STAIRS)
+		stairs_pos = (Vector2){x*SCALE, y*SCALE};
+
+	Vector2 compass_arrow = Vector2Scale(Vector2Normalize(Vector2Subtract(stairs_pos, player_pos)), 20);
+	DrawLineV(player_pos, Vector2Add(player_pos, compass_arrow), BLUE);
+}
+
 int main()
 {
 	char *ore_name; int prev_amount;
@@ -312,13 +394,12 @@ int main()
 	for(int x = 0; x < object_tiles.wid; x++)
 		ore_map[x] = malloc(sizeof(Ore)*object_tiles.hei);
 
-	int stairs_x = 10;
-	int stairs_y = 10;
-	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
-	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
+	int ent_x = 10, ent_y = 10;
+	for(int i = -1; i <= 1; i++)
+	for(int j = -1; j <= 1; j++)
+			object_tiles.tiles[ent_x+i][ent_y+j] = WALL;
+	object_tiles.tiles[ent_x][ent_y] = ENTRANCE;
+	object_tiles.tiles[ent_x][ent_y+1] = EMPTY;
 
 	camera.offset = (Vector2){WID/2, HEI/2};
 	camera.rotation = 0;
@@ -386,6 +467,7 @@ int main()
 		DrawGroundTiles();
 		DrawObjectTiles();
 		DrawRectangleRec(player, RED);
+		DrawCompass();
 		EndMode2D();
 
 		DisplayCoins();
@@ -421,6 +503,14 @@ int main()
 		}
 
 		if(touches_stairs(player)) descend_stairs();
+		if(touches_entrance(player))
+		{
+			mine_floor = 0;
+			tier++;
+			descend_stairs();
+		}
+
+		DrawText(TextFormat("Foor: %d", mine_floor), 0, HEI-20, 20, WHITE);
 
 		EndDrawing();
 	}
