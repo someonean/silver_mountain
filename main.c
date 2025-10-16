@@ -16,10 +16,21 @@ enum GROUND_TILE_TYPES {DIRT, GRASS};
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD};
+enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, N_ORES};
 char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold"}; // same order as in the enum
-int ore_values[] = {1, 10, 20, 50, 100};
+int ore_values[] = {1, 5, 10, 100, 200};
 int ore_durabilities[] = {1, 10, 20, 50, 100}; // more valuable ores are harder to mine
+int ore_frequencies[] = {50, 100, 50, 20, 10};
+
+int weighed_rand(int *prob_distribution, int width)
+{
+	int sum = 0, i;
+	for(i = 0; i < width; i++) sum += prob_distribution[i];
+	int n = rand()%sum;
+	sum = 0;
+	for(i = 0; sum < n; i++) sum += prob_distribution[i];
+	return i-1;
+}
 
 typedef struct
 {
@@ -269,13 +280,13 @@ void descend_stairs()
 	{
 		for(int y = 0; y < object_tiles.hei; y++)
 		{
-			ore_map[x][y].type = rand()%5;
+			ore_map[x][y].type = weighed_rand(ore_frequencies, N_ORES);
 			switch(ore_map[x][y].type)
 			{
 				case STONE: ore_map[x][y].amount = 10000; break;
-				case BRONZE: ore_map[x][y].amount = 1000; break;
+				case BRONZE: ore_map[x][y].amount = 500; break;
 				case IRON: ore_map[x][y].amount = 100; break;
-				case SILVER: ore_map[x][y].amount = 20; break;
+				case SILVER: ore_map[x][y].amount = 50; break;
 				case GOLD: ore_map[x][y].amount = 10; break;
 			}
 			ore_map[x][y].wear = ore_durabilities[ore_map[x][y].type];
