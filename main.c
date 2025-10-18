@@ -16,11 +16,14 @@ enum GROUND_TILE_TYPES {DIRT, GRASS};
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, N_ORES};
-char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold"}; // same order as in the enum
-int ore_values[] = {1, 5, 10, 100, 200};
-int ore_durabilities[] = {1, 10, 20, 50, 100}; // more valuable ores are harder to mine
-int ore_frequencies[] = {50, 100, 50, 20, 10};
+enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
+char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapphire", "Emerald"};
+// same order as in the enum
+
+int ore_values[] = {1, 5, 10, 100, 200, 500, 1000, 2000};
+int ore_durabilities[] = {1, 10, 20, 50, 100, 20, 20, 20};
+int ore_frequencies[] = {50, 100, 50, 20, 10, 5, 5, 5};
+int ore_amounts[] = {10000, 500, 100, 50, 10, 5, 5, 5};
 
 int weighed_rand(int *prob_distribution, int width)
 {
@@ -126,6 +129,18 @@ void DrawOre(int x, int y, int type)
 		case GOLD:
 			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
 			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, YELLOW);
+			break;
+		case RUBY:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, RED);
+			break;
+		case SAPPHIRE:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BLUE);
+			break;
+		case EMERALD:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
+			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, GREEN);
 			break;
 	}
 }
@@ -281,14 +296,7 @@ void descend_stairs()
 		for(int y = 0; y < object_tiles.hei; y++)
 		{
 			ore_map[x][y].type = weighed_rand(ore_frequencies, N_ORES);
-			switch(ore_map[x][y].type)
-			{
-				case STONE: ore_map[x][y].amount = 10000; break;
-				case BRONZE: ore_map[x][y].amount = 500; break;
-				case IRON: ore_map[x][y].amount = 100; break;
-				case SILVER: ore_map[x][y].amount = 50; break;
-				case GOLD: ore_map[x][y].amount = 10; break;
-			}
+			ore_map[x][y].amount = ore_amounts[ore_map[x][y].type];
 			ore_map[x][y].wear = ore_durabilities[ore_map[x][y].type];
 		}
 	}
