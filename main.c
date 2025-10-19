@@ -56,7 +56,7 @@ Ore **ore_map;
 #define WID 800
 #define HEI 600
 
-Rectangle player = {0, 0, 50, 50}; // x, y, w, h
+Rectangle player = {0, 0, 49, 49}; // x, y, w, h
 
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
