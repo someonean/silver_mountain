@@ -22,8 +22,16 @@ char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapph
 
 int ore_values[] = {1, 5, 10, 100, 200, 500, 1000, 2000};
 int ore_durabilities[] = {1, 10, 20, 50, 100, 20, 20, 20};
-int ore_frequencies[] = {50, 100, 50, 20, 10, 5, 5, 5};
+int ore_frequencies[N_ORES];
 int ore_amounts[] = {10000, 500, 100, 50, 10, 5, 5, 5};
+
+#define MAX_TIERS 3
+int tier_frequencies[MAX_TIERS][N_ORES] = // tier-frequency table
+{
+{20,	50,	100,	50,	20,	0,	0},
+{20,	20,	50,	100,	50,	20,	0},
+{20,	20,	20,	50,	100,	50,	20},
+};
 
 int weighed_rand(int *prob_distribution, int width)
 {
@@ -526,6 +534,10 @@ int main()
 		{
 			mine_floor = 0;
 			tier++;
+			if(tier > MAX_TIERS) tier = MAX_TIERS;
+			else
+				for(int i = 0; i < N_ORES; i++)
+					ore_frequencies[i] = tier_frequencies[tier-1][i];
 			descend_stairs();
 		}
 
