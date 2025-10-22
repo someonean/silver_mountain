@@ -17,8 +17,29 @@ enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
-char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapphire", "Emerald"};
-// same order as in the enum
+
+typedef struct
+{
+	char *name;
+	int value;
+	int durability;
+	int frequency;
+	int amount;
+} Oreinfo;
+Oreinfo ores[N_ORES] =
+{
+{"Stone",	1,	1,	0,	10000},
+{"Bronze",	15,	10,	0,	500},
+{"Iron",	40,	20,	0,	100},
+{"Silver",	75,	30,	0,	50},
+{"Gold",	180,	100,	0,	10},
+{"Ruby",	300,	20,	0,	5},
+{"Sapphire",	350,	20,	0,	5},
+{"Emerald",	400,	20,	0,	5},
+};
+// the frequencies are set dynamically later, depending on the tier
+
+int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
 //We have to make the ores work like this:
 // {"Ore Name", ore_max_hp, ore_value, ore_type (the type defines the max amount and the frequency), mine tier that it's met in}
@@ -32,10 +53,10 @@ char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapph
 //ores[8] = {"Sapphire", 36, 868, RARE, 2};
 //ores[9] = {"Ruby", 54, 3906, SUPER, 2};
 
-int ore_values[] = {1, 15, 40, 75, 180, 300, 350, 400};
-int ore_durabilities[] = {1, 10, 20, 30, 100, 20, 20, 20};
-int ore_frequencies[N_ORES];
-int ore_amounts[] = {10000, 500, 100, 50, 10, 5, 5, 5};
+
+// The ores now work with a struct, as suggested(should've done it a while ago).
+// The frequency/amount system seems more flexible for now, but we'll see.
+
 
 #define MAX_TIERS 3
 int tier_frequencies[MAX_TIERS][N_ORES] = // tier-frequency table
@@ -318,8 +339,8 @@ void descend_stairs()
 		for(int y = 0; y < object_tiles.hei; y++)
 		{
 			ore_map[x][y].type = weighed_rand(ore_frequencies, N_ORES);
-			ore_map[x][y].amount = ore_amounts[ore_map[x][y].type];
-			ore_map[x][y].wear = ore_durabilities[ore_map[x][y].type];
+			ore_map[x][y].amount = ores[ore_map[x][y].type].amount;
+			ore_map[x][y].wear = ores[ore_map[x][y].type].durability;
 		}
 	}
 
@@ -499,7 +520,7 @@ int main()
 				mining_target = (int2){tilex, tiley};
 				time_since_last_mined = mining_delay;
 				prev_amount = ore_map[tilex][tiley].amount;
-				ore_name = ore_names[ore_map[tilex][tiley].type];
+				ore_name = ores[ore_map[tilex][tiley].type].name;
 			}
 		}
 
@@ -522,15 +543,15 @@ int main()
 				ore_map[t.x][t.y].wear -= mining_damage;
 				if(ore_map[t.x][t.y].wear <= 0)
 				{
-					ore_map[t.x][t.y].wear = ore_durabilities[ore_map[t.x][t.y].type];
+					ore_map[t.x][t.y].wear = ores[ore_map[t.x][t.y].type].durability;
 					ore_map[t.x][t.y].amount--;
 					prev_amount = ore_map[t.x][t.y].amount;
-					coins += ore_value_multiplier*ore_values[ore_map[t.x][t.y].type];
+					coins += ore_value_multiplier*ores[ore_map[t.x][t.y].type].value;
 					if(ore_map[t.x][t.y].amount <= 0)
 					{
 						ore_map[t.x][t.y].type = STONE;
 						ore_map[t.x][t.y].amount = 10000;
-						ore_map[t.x][t.y].wear = ore_durabilities[STONE];
+						ore_map[t.x][t.y].wear = ores[STONE].durability;
 						player_mode = MOVING;
 						time_since_last_mined = 0;
 						break;
@@ -538,7 +559,7 @@ int main()
 				}
 			}
 			DrawText(TextFormat("%s x %d", ore_name, prev_amount), WID/3, HEI-20, 20, YELLOW);
-			DrawWearBar(ore_map[t.x][t.y].wear, ore_durabilities[ore_map[t.x][t.y].type]);
+			DrawWearBar(ore_map[t.x][t.y].wear, ores[ore_map[t.x][t.y].type].durability);
 			time_since_last_mined += dt;
 		}
 
@@ -550,7 +571,7 @@ int main()
 			if(tier > MAX_TIERS) tier = MAX_TIERS;
 			else
 				for(int i = 0; i < N_ORES; i++)
-					ore_frequencies[i] = tier_frequencies[tier-1][i];
+					ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
 			descend_stairs();
 		}
 
