@@ -20,6 +20,18 @@ enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_OR
 char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapphire", "Emerald"};
 // same order as in the enum
 
+//We have to make the ores work like this:
+// {"Ore Name", ore_max_hp, ore_value, ore_type (the type defines the max amount and the frequency), mine tier that it's met in}
+//ores[1] = {"Stone", 5, 1, RUBBLE, 1};
+//ores[2] = {"Copper", 7, 14, MASS, 1};
+//ores[3] = {"Iron", 11, 43, MAIN, 1};
+//ores[4] = {"Amethyst", 21, 512, RARE, 1};
+//ores[5] = {"Lapis", 32, 2304, SUPER, 1};
+//ores[6] = {"Silver", 12, 23, MASS, 2};
+//ores[7] = {"Gold", 17, 70, MAIN, 2};
+//ores[8] = {"Sapphire", 36, 868, RARE, 2};
+//ores[9] = {"Ruby", 54, 3906, SUPER, 2};
+
 int ore_values[] = {1, 15, 40, 75, 180, 300, 350, 400};
 int ore_durabilities[] = {1, 10, 20, 30, 100, 20, 20, 20};
 int ore_frequencies[N_ORES];
@@ -57,6 +69,7 @@ Ore **ore_map;
 #define HEI 600
 
 Rectangle player = {0, 0, 49, 49}; // x, y, w, h
+//Todo: make another rectangle which is the player hitbox {0, 0, 35, 35}
 
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
@@ -541,7 +554,6 @@ int main()
 			descend_stairs();
 		}
 
-		DrawText(TextFormat("Mining Damage: %f", mining_damage), 0, HEI - 40, 20, WHITE);
 		DrawText(TextFormat("Floor: %d", mine_floor), 0, HEI-20, 20, WHITE);
 
 		EndDrawing();
