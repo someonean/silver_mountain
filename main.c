@@ -20,8 +20,8 @@ enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_OR
 char *ore_names[] = {"Stone", "Bronze", "Iron", "Silver", "Gold", "Ruby", "Sapphire", "Emerald"};
 // same order as in the enum
 
-int ore_values[] = {1, 5, 10, 100, 200, 500, 1000, 2000};
-int ore_durabilities[] = {1, 10, 20, 50, 100, 20, 20, 20};
+int ore_values[] = {1, 15, 40, 75, 180, 300, 350, 400};
+int ore_durabilities[] = {1, 10, 20, 30, 100, 20, 20, 20};
 int ore_frequencies[N_ORES];
 int ore_amounts[] = {10000, 500, 100, 50, 10, 5, 5, 5};
 
@@ -47,7 +47,7 @@ typedef struct
 {
 	int type;
 	int amount;
-	int wear; // how worn down the top ore piece is(goes from X to 0)
+	float wear; // how worn down the top ore piece is(goes from X to 0)
 } Ore;
 
 Ore **ore_map;
@@ -72,14 +72,15 @@ typedef struct
 int2 mining_target = {-1,-1};
 
 float time_since_last_mined, mining_delay = 1.0;
-int mining_speed = 1;
-int mining_power = 1;
-int mining_skill = 1; float ore_value_multiplier = 1.0;
+int total_level = 0;
+int mining_speed = 0;
+int mining_power = 0; float mining_damage = 2.0;
+int mining_skill = 0; float ore_value_multiplier = 1.0;
 
 // upgrade costs
-int mining_speed_upgrade = 1;
-int mining_power_upgrade = 1;
-int mining_skill_upgrade = 1;
+int mining_speed_upgrade = 0;
+int mining_power_upgrade = 0;
+int mining_skill_upgrade = 0;
 
 #define PLAYER_SPEED 500.0 // pixels per second
 
@@ -324,11 +325,12 @@ void descend_stairs()
 	if(rand()%1000 < next_tier_chance)
 		place_random_entrance();
 
-	player.x = player.y = 0;
+	player.x = MAP_WID / 2;
+	player.y = MAP_HEI / 2;
 	object_tiles.tiles[0][0] = EMPTY;
 }
 
-void DrawWearBar(int wear, int max_durability)
+void DrawWearBar(float wear, int max_durability)
 {
 	DrawRectangle(WID/3, HEI-40, WID/3, 20, GRAY);
 	DrawRectangle(WID/3, HEI-40, wear*(WID/3)/max_durability, 20, GREEN);
@@ -349,10 +351,8 @@ void UpgradeMiningSpeed()
 	if(coins < mining_speed_upgrade) return;
 	coins -= mining_speed_upgrade;
 
-	mining_speed++; mining_delay = 1.0/mining_speed;
-	int cost_increase = mining_speed_upgrade*5/100; // 5%
-	if(cost_increase < 1) cost_increase = 1;
-	mining_speed_upgrade += cost_increase;
+	total_level++;
+	mining_speed++; mining_delay = 1.0 / (1.0+mining_speed*0.05); //+5% to the boost of speed per upgrade
 }
 
 void UpgradeMiningPower()
@@ -360,10 +360,8 @@ void UpgradeMiningPower()
 	if(coins < mining_power_upgrade) return;
 	coins -= mining_power_upgrade;
 
-	mining_power++;
-	int cost_increase = mining_power_upgrade*5/100; // 5%
-	if(cost_increase < 1) cost_increase = 1;
-	mining_power_upgrade += cost_increase;
+	total_level++;
+	mining_power++; mining_damage = 2.0 * (1.0 + mining_power * 0.05);
 }
 
 void UpgradeMiningSkill()
@@ -371,16 +369,14 @@ void UpgradeMiningSkill()
 	if(coins < mining_skill_upgrade) return;
 	coins -= mining_skill_upgrade;
 
-	mining_skill++; ore_value_multiplier *= 1.01; // ores yield 1% more coins
-	int cost_increase = mining_skill_upgrade*5/100; // 5%
-	if(cost_increase < 1) cost_increase = 1;
-	mining_skill_upgrade += cost_increase;
+	total_level++;
+	mining_skill++; ore_value_multiplier = 1.0 + mining_skill * 0.05;
 }
 
 void DrawCompass() // for now, to make testing easier
 {
 	Vector2 player_pos = (Vector2){player.x+player.width/2, player.y+player.height/2};
-	Vector2 stairs_pos;
+	Vector2 stairs_pos = (Vector2){0, 0};
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.wid; y++)
 	if(object_tiles.tiles[x][y] == STAIRS)
@@ -440,6 +436,10 @@ int main()
 		else
 			ClearBackground(BLACK);
 		float dt = GetFrameTime();
+
+		mining_speed_upgrade = 2 * mining_speed * mining_speed + total_level;
+		mining_power_upgrade = 2 * mining_power * mining_power + total_level;
+		mining_skill_upgrade = 2 * mining_skill * mining_skill + total_level;
 
 		if(IsKeyPressed(KEY_F))
 			UpgradeMiningSpeed();
@@ -506,7 +506,7 @@ int main()
 			while(time_since_last_mined >= mining_delay)
 			{
 				time_since_last_mined -= mining_delay;
-				ore_map[t.x][t.y].wear -= mining_power;
+				ore_map[t.x][t.y].wear -= mining_damage;
 				if(ore_map[t.x][t.y].wear <= 0)
 				{
 					ore_map[t.x][t.y].wear = ore_durabilities[ore_map[t.x][t.y].type];
@@ -541,7 +541,8 @@ int main()
 			descend_stairs();
 		}
 
-		DrawText(TextFormat("Foor: %d", mine_floor), 0, HEI-20, 20, WHITE);
+		DrawText(TextFormat("Mining Damage: %f", mining_damage), 0, HEI - 40, 20, WHITE);
+		DrawText(TextFormat("Floor: %d", mine_floor), 0, HEI-20, 20, WHITE);
 
 		EndDrawing();
 	}

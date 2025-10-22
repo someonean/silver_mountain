@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/InfiniteMiner.vcxproj.user
+/InfiniteMiner.vcxproj.filters
+/InfiniteMiner.vcxproj
+/InfiniteMiner.sln
+/x64/Debug
+/InfiniteMiner/x64/Debug
+/.vs
