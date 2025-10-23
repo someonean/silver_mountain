@@ -339,27 +339,30 @@ void place_random_stairs()
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 }
 
-void descend_stairs(int x, int y, char stairs)
+void generate_floor()
 {
-	depth++;
-	path = realloc(path, sizeof(MPath)*depth);
-	path[depth-1].x = x;
-	path[depth-1].y = y;
-	path[depth-1].z = mine_floor;
-	path[depth-1].stairs = stairs;
-
-	if(stairs)
-		mine_floor++;
-	else
+	if(depth <= 0) // surface
 	{
-		mine_floor = 1;
-		tier++;
-		if(tier > MAX_TIERS) tier = MAX_TIERS;
-		else
-			for(int i = 0; i < N_ORES; i++)
-				ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
+		for(int x = 0; x < ground_tiles.wid; x++)
+		for(int y = 0; y < ground_tiles.hei; y++)
+		{
+			ground_tiles.tiles[x][y] = GRASS;
+			object_tiles.tiles[x][y] = EMPTY;
+		}
+
+		int ent_x = 10, ent_y = 10;
+		for(int i = -1; i <= 1; i++)
+		for(int j = -1; j <= 1; j++)
+				object_tiles.tiles[ent_x+i][ent_y+j] = WALL;
+		object_tiles.tiles[ent_x][ent_y] = ENTRANCE;
+		object_tiles.tiles[ent_x][ent_y+1] = EMPTY;
+
+		player.x = 5*SCALE; player.y = 5*SCALE; // place player close to the entrance
+		return;
 	}
 
+	for(int i = 0; i < N_ORES; i++)
+		ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
 	int seed = 0;
 	for(int i = 0; i < depth; i++)
 		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
@@ -401,6 +404,45 @@ void descend_stairs(int x, int y, char stairs)
 	player.x = MAP_WID / 2;
 	player.y = MAP_HEI / 2;
 	object_tiles.tiles[0][0] = EMPTY;
+}
+
+void descend_stairs(int x, int y, char stairs)
+{
+	depth++;
+	path = realloc(path, sizeof(MPath)*depth);
+	path[depth-1].x = x;
+	path[depth-1].y = y;
+	path[depth-1].z = mine_floor;
+	path[depth-1].stairs = stairs;
+
+	if(stairs)
+		mine_floor++;
+	else
+	{
+		mine_floor = 1;
+		tier++;
+		if(tier > MAX_TIERS) tier = MAX_TIERS;
+	}
+
+	generate_floor();
+}
+
+void ascend_floor()
+{
+	if(depth <= 0) return;
+
+	char stairs = path[depth-1].stairs;
+	int floor = path[depth-1].z;
+	depth--;
+	path = realloc(path, sizeof(MPath)*depth);
+	if(stairs)
+		mine_floor--;
+	else
+	{
+		mine_floor = floor;
+		tier--;
+	}
+	generate_floor();
 }
 
 void DrawWearBar(float wear, int max_durability)
@@ -490,12 +532,7 @@ int main()
 	for(int x = 0; x < object_tiles.wid; x++)
 		ore_map[x] = malloc(sizeof(Ore)*object_tiles.hei);
 
-	int ent_x = 10, ent_y = 10;
-	for(int i = -1; i <= 1; i++)
-	for(int j = -1; j <= 1; j++)
-			object_tiles.tiles[ent_x+i][ent_y+j] = WALL;
-	object_tiles.tiles[ent_x][ent_y] = ENTRANCE;
-	object_tiles.tiles[ent_x][ent_y+1] = EMPTY;
+	generate_floor(); // Because the depth is 0, it will generate the surface "floor"
 
 	camera.offset = (Vector2){WID/2, HEI/2};
 	camera.rotation = 0;
@@ -605,6 +642,9 @@ int main()
 		int2 pos;
 		if(touches_stairs(player, &pos)) descend_stairs(pos.x, pos.y, 1);
 		else if(touches_entrance(player, &pos)) descend_stairs(pos.x, pos.y, 0);
+
+		if(IsKeyPressed(KEY_U)) // up
+			ascend_floor();
 
 		DrawText(TextFormat("Floor: %d", mine_floor), 0, HEI-20, 20, WHITE);
 
