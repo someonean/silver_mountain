@@ -94,9 +94,18 @@ Rectangle player = {0, 0, 49, 49}; // x, y, w, h
 
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
-int depth = 0;
 int tier = 0; // surface layer is of tier 0
 int mine_floor = 1; // with each floor the player descends, this number gets larger
+
+typedef struct
+{
+	int x, y; // placement of entrance on above floor
+	int z; // which floor the above floor is
+	char stairs; // whether above entrance is just stairs, or a mine entrance
+} MPath; // Mine path
+
+MPath *path = NULL; // where the player currently is
+int depth = 0; // how long/deep the current path is
 
 typedef struct
 {
@@ -250,26 +259,34 @@ void collide_with_walls(Rectangle *player, Rectangle oldrec)
 	}
 }
 
-char touches_stairs(Rectangle rec)
+char touches_stairs(Rectangle rec, int2 *pos)
 {
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.hei; y++)
 	{
 		if(object_tiles.tiles[x][y] != STAIRS) continue;
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
-		if(CheckCollisionRecs(rec, tilerec)) return 1;
+		if(CheckCollisionRecs(rec, tilerec))
+		{
+			pos->x = x; pos->y = y;
+			return 1;
+		}
 	}
 	return 0;
 }
 
-char touches_entrance(Rectangle rec)
+char touches_entrance(Rectangle rec, int2 *pos)
 {
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.hei; y++)
 	{
 		if(object_tiles.tiles[x][y] != ENTRANCE) continue;
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
-		if(CheckCollisionRecs(rec, tilerec)) return 1;
+		if(CheckCollisionRecs(rec, tilerec))
+		{
+			pos->x = x; pos->y = y;
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -322,8 +339,32 @@ void place_random_stairs()
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
 }
 
-void descend_stairs()
+void descend_stairs(int x, int y, char stairs)
 {
+	depth++;
+	path = realloc(path, sizeof(MPath)*depth);
+	path[depth-1].x = x;
+	path[depth-1].y = y;
+	path[depth-1].z = mine_floor;
+	path[depth-1].stairs = stairs;
+
+	if(stairs)
+		mine_floor++;
+	else
+	{
+		mine_floor = 1;
+		tier++;
+		if(tier > MAX_TIERS) tier = MAX_TIERS;
+		else
+			for(int i = 0; i < N_ORES; i++)
+				ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
+	}
+
+	int seed = 0;
+	for(int i = 0; i < depth; i++)
+		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
+	srand(seed);
+
 	for(int x = 0; x < ground_tiles.wid; x++)
 	{
 		for(int y = 0; y < ground_tiles.hei; y++)
@@ -343,10 +384,6 @@ void descend_stairs()
 			ore_map[x][y].wear = ores[ore_map[x][y].type].durability;
 		}
 	}
-
-	depth++;
-	mine_floor++;
-
 	int next_tier_chance = 0;
 	// measured in promils(1/1000) instead of percents for greater precision
 
@@ -355,9 +392,11 @@ void descend_stairs()
 		next_tier_chance = (mine_floor-10)*10;
 	}
 
-	place_random_stairs();
-	if(rand()%1000 < next_tier_chance)
-		place_random_entrance();
+	for(int i = 0; i < 5; i++)
+		if(rand()%1000 < next_tier_chance)
+			place_random_entrance();
+		else
+			place_random_stairs();
 
 	player.x = MAP_WID / 2;
 	player.y = MAP_HEI / 2;
@@ -563,17 +602,9 @@ int main()
 			time_since_last_mined += dt;
 		}
 
-		if(touches_stairs(player)) descend_stairs();
-		if(touches_entrance(player))
-		{
-			mine_floor = 0;
-			tier++;
-			if(tier > MAX_TIERS) tier = MAX_TIERS;
-			else
-				for(int i = 0; i < N_ORES; i++)
-					ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
-			descend_stairs();
-		}
+		int2 pos;
+		if(touches_stairs(player, &pos)) descend_stairs(pos.x, pos.y, 1);
+		else if(touches_entrance(player, &pos)) descend_stairs(pos.x, pos.y, 0);
 
 		DrawText(TextFormat("Floor: %d", mine_floor), 0, HEI-20, 20, WHITE);
 
