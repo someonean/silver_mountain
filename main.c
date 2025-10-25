@@ -1,6 +1,8 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
 
 typedef struct
 {
@@ -13,7 +15,7 @@ Tilemap ground_tiles, object_tiles;
 // and the player interacts with the object tiles(walls, ores, etc.)
 
 enum GROUND_TILE_TYPES {DIRT, GRASS};
-enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE};
+enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
@@ -343,13 +345,6 @@ void generate_floor()
 {
 	if(depth <= 0) // surface
 	{
-		for(int x = 0; x < ground_tiles.wid; x++)
-		for(int y = 0; y < ground_tiles.hei; y++)
-		{
-			ground_tiles.tiles[x][y] = GRASS;
-			object_tiles.tiles[x][y] = EMPTY;
-		}
-
 		int ent_x = 10, ent_y = 10;
 		for(int i = -1; i <= 1; i++)
 		for(int j = -1; j <= 1; j++)
@@ -400,10 +395,99 @@ void generate_floor()
 			place_random_entrance();
 		else
 			place_random_stairs();
+}
 
-	player.x = MAP_WID / 2;
-	player.y = MAP_HEI / 2;
-	object_tiles.tiles[0][0] = EMPTY;
+int get_entrance_id(int ex, int ey) // which entrance in the given floor it is
+{
+	int counter = 0;
+
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] == STAIRS || object_tiles.tiles[x][y] == ENTRANCE)
+			counter++;
+		if(x == ex && y == ey)
+			return counter;
+			// first encountered entrance will be 1, second 2, etc.
+	}
+	return -1; // invalid coordinates
+}
+
+char save_floor()
+{
+	FILE *f = fopen("floor.dat", "wb");
+	if(!f)
+		return 0; // failure
+
+	fputc(object_tiles.wid, f);
+	fputc(object_tiles.hei, f);
+	// first 2 bytes of the file are the tile width and height,
+	// (meaning they can both be only from 0 to 255),
+	// but this saves us the hassle of worrying about endianness
+
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] == ORE)
+		{
+			fputc(N_OBJECTS + ore_map[x][y].type, f);
+			// ores take up the space after the objects in the
+			// encoding
+
+			fwrite(&ore_map[x][y].amount, sizeof(ore_map[x][y].amount), 1, f); // save ore amount
+			fwrite(&ore_map[x][y].wear, sizeof(ore_map[x][y].wear), 1, f); // save ore wear
+		}
+		else fputc(object_tiles.tiles[x][y], f);
+	}
+	fclose(f);
+	return 1; // success
+}
+
+char load_floor()
+{
+	FILE *f = fopen("floor.dat", "rb");
+	if(!f)
+		return 0;
+
+	for(int x = 0; x < object_tiles.wid; x++)
+		free(object_tiles.tiles[x]);
+	free(object_tiles.tiles);
+
+	object_tiles.wid = getc(f);
+	object_tiles.hei = getc(f);
+
+	object_tiles.tiles = malloc(sizeof(int*)*object_tiles.wid);
+	for(int x = 0; x < object_tiles.wid; x++)
+	{
+		object_tiles.tiles[x] = malloc(sizeof(int)*object_tiles.hei);
+		for(int y = 0; y < object_tiles.hei; y++)
+		{
+			int ch = getc(f);
+			if(ch >= N_OBJECTS)
+			{
+				object_tiles.tiles[x][y] = ORE;
+				ore_map[x][y].type = ch - N_OBJECTS;
+				fread(&ore_map[x][y].amount, sizeof(ore_map[x][y].amount), 1, f); // load ore amount
+				fread(&ore_map[x][y].wear, sizeof(ore_map[x][y].wear), 1, f); // load ore wear
+			}
+			else
+				object_tiles.tiles[x][y] = ch;
+		}
+	}
+	fclose(f);
+
+	if(depth == 0)
+	{
+		for(int x = 0; x < ground_tiles.wid; x++)
+		for(int y = 0; y < ground_tiles.hei; y++)
+			ground_tiles.tiles[x][y] = GRASS;
+	}
+	else
+	{
+		for(int x = 0; x < ground_tiles.wid; x++)
+		for(int y = 0; y < ground_tiles.hei; y++)
+			ground_tiles.tiles[x][y] = DIRT;
+	}
 }
 
 void descend_stairs(int x, int y, char stairs)
@@ -424,7 +508,25 @@ void descend_stairs(int x, int y, char stairs)
 		if(tier > MAX_TIERS) tier = MAX_TIERS;
 	}
 
-	generate_floor();
+	save_floor(); // save the floor we are leaving
+
+	int ent_id = get_entrance_id(x, y);
+	if(!chdir(TextFormat("%d", ent_id))) // successful, therefore exists
+		load_floor(); // load below floor, stored in entrance directory
+	else
+	{
+		system(TextFormat("mkdir %d", ent_id));
+		// the mkdir command works everywhere
+
+		chdir(TextFormat("%d", ent_id));
+
+		generate_floor();
+	}
+
+	player.x = MAP_WID / 2;
+	player.y = MAP_HEI / 2;
+	object_tiles.tiles[0][0] = EMPTY;
+	save_floor();
 }
 
 void ascend_floor()
@@ -433,6 +535,9 @@ void ascend_floor()
 
 	char stairs = path[depth-1].stairs;
 	int floor = path[depth-1].z;
+	int x = path[depth-1].x;
+	int y = path[depth-1].y;
+
 	depth--;
 	path = realloc(path, sizeof(MPath)*depth);
 	if(stairs)
@@ -442,7 +547,15 @@ void ascend_floor()
 		mine_floor = floor;
 		tier--;
 	}
-	generate_floor();
+
+	save_floor(); // save current floor
+	chdir(".."); // go to above directory
+	load_floor(); // load the above floor
+
+	player.x = x*SCALE;
+	player.y = (y+1)*SCALE;
+
+	// place player exactly below above entrance when ascending a floor
 }
 
 void DrawWearBar(float wear, int max_durability)
