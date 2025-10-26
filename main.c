@@ -411,6 +411,8 @@ char save_floor()
 	{
 		if(object_tiles.tiles[x][y] == ORE)
 		{
+			if(ore_map[x][y].type < 0)
+				ore_map[x][y].type = 0;
 			fputc(N_OBJECTS + ore_map[x][y].type, f);
 			// ores take up the space after the objects in the
 			// encoding
