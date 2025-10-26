@@ -604,13 +604,24 @@ void UpgradeMiningSkill()
 void DrawCompass() // for now, to make testing easier
 {
 	Vector2 player_pos = (Vector2){player.x+player.width/2, player.y+player.height/2};
-	Vector2 stairs_pos = (Vector2){0, 0};
+	Vector2 stairs_pos = (Vector2){0, 0}, closest = (Vector2){0, 0};
+	float min_dst = -1;
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.wid; y++)
-	if(object_tiles.tiles[x][y] == STAIRS)
-		stairs_pos = (Vector2){x*SCALE, y*SCALE};
+	{
+		if(object_tiles.tiles[x][y] == STAIRS || object_tiles.tiles[x][y] == ENTRANCE)
+		{
+			stairs_pos = (Vector2){x*SCALE, y*SCALE};
+			float dst = Vector2Distance(player_pos, stairs_pos);
+			if(min_dst == -1 || dst < min_dst)
+			{
+				min_dst = dst;
+				closest = stairs_pos;
+			}
+		}
+	}
 
-	Vector2 compass_arrow = Vector2Scale(Vector2Normalize(Vector2Subtract(stairs_pos, player_pos)), 20);
+	Vector2 compass_arrow = Vector2Scale(Vector2Normalize(Vector2Subtract(closest, player_pos)), 20);
 	DrawLineV(player_pos, Vector2Add(player_pos, compass_arrow), BLUE);
 }
 
