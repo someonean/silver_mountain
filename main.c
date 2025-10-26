@@ -397,22 +397,6 @@ void generate_floor()
 			place_random_stairs();
 }
 
-int get_entrance_id(int ex, int ey) // which entrance in the given floor it is
-{
-	int counter = 0;
-
-	for(int x = 0; x < object_tiles.wid; x++)
-	for(int y = 0; y < object_tiles.hei; y++)
-	{
-		if(object_tiles.tiles[x][y] == STAIRS || object_tiles.tiles[x][y] == ENTRANCE)
-			counter++;
-		if(x == ex && y == ey)
-			return counter;
-			// first encountered entrance will be 1, second 2, etc.
-	}
-	return -1; // invalid coordinates
-}
-
 char save_floor()
 {
 	FILE *f = fopen("floor.dat", "wb");
@@ -421,9 +405,6 @@ char save_floor()
 
 	fputc(object_tiles.wid, f);
 	fputc(object_tiles.hei, f);
-	// first 2 bytes of the file are the tile width and height,
-	// (meaning they can both be only from 0 to 255),
-	// but this saves us the hassle of worrying about endianness
 
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.hei; y++)
@@ -510,15 +491,15 @@ void descend_stairs(int x, int y, char stairs)
 
 	save_floor(); // save the floor we are leaving
 
-	int ent_id = get_entrance_id(x, y);
-	if(!chdir(TextFormat("%d", ent_id))) // successful, therefore exists
+	MPath last = path[depth-1];
+	if(!chdir(TextFormat("%d-%d", last.x, last.y))) // successful, therefore exists
 		load_floor(); // load below floor, stored in entrance directory
 	else
 	{
-		system(TextFormat("mkdir %d", ent_id));
+		system(TextFormat("mkdir %d-%d", last.x, last.y));
 		// the mkdir command works everywhere
 
-		chdir(TextFormat("%d", ent_id));
+		chdir(TextFormat("%d-%d", last.x, last.y));
 
 		generate_floor();
 	}
