@@ -63,9 +63,16 @@ int ore_frequencies[N_ORES]; // still around, cause it's more convenient for wei
 #define MAX_TIERS 3
 int tier_frequencies[MAX_TIERS][N_ORES] = // tier-frequency table
 {
-{20,	50,	100,	50,	20,	0,	0},
-{20,	20,	50,	100,	50,	20,	0},
-{20,	20,	20,	50,	100,	50,	20},
+{20,	60,	40,	4,	2,	0,	0},
+{20,	0,	60,	40,	4,	2,	0},
+{20,	0,	0,	60,	40,	4,	2},
+};
+
+int tier_amounts[MAX_TIERS][N_ORES] = // tier-amount table
+{
+{10000,	500,	100,	5,	2,	0,	0},
+{10000,	0,	500,	100,	5,	2,	0},
+{10000,	0,	0,	500,	100,	5,	2},
 };
 
 int weighed_rand(int *prob_distribution, int width)
@@ -358,6 +365,8 @@ void generate_floor()
 
 	for(int i = 0; i < N_ORES; i++)
 		ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
+	for(int i = 0; i < N_ORES; i++)
+		ores[i].amount =  tier_amounts[tier-1][i];
 	int seed = 0;
 	for(int i = 0; i < depth; i++)
 		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
