@@ -19,6 +19,7 @@ enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
+enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
 typedef struct
 {
@@ -61,18 +62,12 @@ int ore_frequencies[N_ORES]; // still around, cause it's more convenient for wei
 
 
 #define MAX_TIERS 3
-int tier_frequencies[MAX_TIERS][N_ORES] = // tier-frequency table
+int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
-{20,	60,	40,	4,	2,	0,	0},
-{20,	0,	60,	40,	4,	2,	0},
-{20,	0,	0,	60,	40,	4,	2},
-};
-
-int tier_amounts[MAX_TIERS][N_ORES] = // tier-amount table
-{
-{10000,	500,	100,	5,	2,	0,	0},
-{10000,	0,	500,	100,	5,	2,	0},
-{10000,	0,	0,	500,	100,	5,	2},
+//	RUBBLE	MASS	MAIN	RARE	SRARE
+{	STONE,	BRONZE,	IRON,	SILVER,	GOLD},
+{	STONE,	IRON,	SILVER,	GOLD,	RUBY},
+{	STONE,	SILVER,	GOLD,	RUBY,	SAPPHIRE}
 };
 
 int weighed_rand(int *prob_distribution, int width)
@@ -364,9 +359,28 @@ void generate_floor()
 	}
 
 	for(int i = 0; i < N_ORES; i++)
-		ores[i].frequency = ore_frequencies[i] = tier_frequencies[tier-1][i];
+		ores[i].frequency = 0;
 	for(int i = 0; i < N_ORES; i++)
-		ores[i].amount =  tier_amounts[tier-1][i];
+		ores[i].amount = 0;
+
+	ores[tier_ores[tier-1][RUBBLE]].frequency = 50;
+	ores[tier_ores[tier-1][RUBBLE]].amount = 10000;
+
+	ores[tier_ores[tier-1][MASS]].frequency = 60;
+	ores[tier_ores[tier-1][MASS]].amount = 500;
+
+	ores[tier_ores[tier-1][MAIN]].frequency = 40;
+	ores[tier_ores[tier-1][MAIN]].amount = 100;
+
+	ores[tier_ores[tier-1][RARE]].frequency = 4;
+	ores[tier_ores[tier-1][RARE]].amount = 5;
+
+	ores[tier_ores[tier-1][SRARE]].frequency = 2;
+	ores[tier_ores[tier-1][SRARE]].amount = 2;
+
+	for(int i = 0; i < N_ORES; i++)
+		ore_frequencies[i] = ores[i].frequency;
+
 	int seed = 0;
 	for(int i = 0; i < depth; i++)
 		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
@@ -741,9 +755,9 @@ int main()
 					coins += ore_value_multiplier*ores[ore_map[t.x][t.y].type].value;
 					if(ore_map[t.x][t.y].amount <= 0)
 					{
-						ore_map[t.x][t.y].type = STONE;
+						ore_map[t.x][t.y].type = tier_ores[tier-1][RUBBLE];
 						ore_map[t.x][t.y].amount = 10000;
-						ore_map[t.x][t.y].wear = ores[STONE].durability;
+						ore_map[t.x][t.y].wear = ores[tier_ores[tier-1][RUBBLE]].durability;
 						player_mode = MOVING;
 						time_since_last_mined = 0;
 						break;
