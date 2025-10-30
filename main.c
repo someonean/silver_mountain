@@ -15,7 +15,7 @@ Tilemap ground_tiles, object_tiles;
 // and the player interacts with the object tiles(walls, ores, etc.)
 
 enum GROUND_TILE_TYPES {DIRT, GRASS};
-enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, ENTRANCE, N_OBJECTS};
+enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
 enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
@@ -40,7 +40,7 @@ Oreinfo ores[N_ORES] =
 {"Sapphire",	350,	20,	0,	5},
 {"Emerald",	400,	20,	0,	5},
 };
-// the frequencies are set dynamically later, depending on the tier
+// the frequencies and amounts are set dynamically later, depending on the tier
 
 int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
@@ -211,6 +211,7 @@ void DrawObjectTiles()
 		{
 			case WALL: c = GRAY; break;
 			case STAIRS: c = BLACK; break;
+			case UPSTAIRS: c = SKYBLUE; break;
 			case ENTRANCE: c = DARKBROWN; break;
 			case ORE: DrawOre(x, y, ore_map[x][y].type);
 			default: continue;
@@ -234,6 +235,7 @@ void collide_with_walls(Rectangle *player, Rectangle oldrec)
 	{
 		if(object_tiles.tiles[x][y] == EMPTY) continue;
 		if(object_tiles.tiles[x][y] == STAIRS) continue;
+		if(object_tiles.tiles[x][y] == UPSTAIRS) continue;
 		if(object_tiles.tiles[x][y] == ENTRANCE) continue;
 
 		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
@@ -275,6 +277,19 @@ char touches_stairs(Rectangle rec, int2 *pos)
 			pos->x = x; pos->y = y;
 			return 1;
 		}
+	}
+	return 0;
+}
+
+char touches_upstairs(Rectangle rec)
+{
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] != UPSTAIRS) continue;
+		Rectangle tilerec = (Rectangle){x*SCALE, y*SCALE, SCALE, SCALE};
+		if(CheckCollisionRecs(rec, tilerec))
+			return 1;
 	}
 	return 0;
 }
@@ -336,11 +351,26 @@ void place_random_stairs()
 		stairs_x = 1 + rand()%(object_tiles.wid-2);
 		stairs_y = 1 + rand()%(object_tiles.hei-2);
 	}
-	object_tiles.tiles[stairs_x-1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x-1][stairs_y+1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y-1] = WALL;
-	object_tiles.tiles[stairs_x+1][stairs_y+1] = WALL;
+	for(int i = -1; i <= 1; i++)
+	for(int j = -1; j <= 1; j++)
+			object_tiles.tiles[stairs_x+i][stairs_y+j] = WALL;
 	object_tiles.tiles[stairs_x][stairs_y] = STAIRS;
+	object_tiles.tiles[stairs_x][stairs_y+1] = EMPTY;
+}
+
+void place_random_upstairs()
+{
+	int stairs_x = 0, stairs_y = 0;
+	while(is_9by9_obstructed(stairs_x, stairs_y))
+	{
+		stairs_x = 1 + rand()%(object_tiles.wid-2);
+		stairs_y = 1 + rand()%(object_tiles.hei-2);
+	}
+	for(int i = -1; i <= 1; i++)
+	for(int j = -1; j <= 1; j++)
+			object_tiles.tiles[stairs_x+i][stairs_y+j] = WALL;
+	object_tiles.tiles[stairs_x][stairs_y] = UPSTAIRS;
+	object_tiles.tiles[stairs_x][stairs_y-1] = EMPTY;
 }
 
 void generate_floor()
@@ -418,6 +448,8 @@ void generate_floor()
 			place_random_entrance();
 		else
 			place_random_stairs();
+
+	place_random_upstairs();
 }
 
 char save_floor()
@@ -529,9 +561,19 @@ void descend_stairs(int x, int y, char stairs)
 		generate_floor();
 	}
 
-	player.x = MAP_WID / 2;
-	player.y = MAP_HEI / 2;
-	object_tiles.tiles[0][0] = EMPTY;
+	int2 upstairs = (int2){object_tiles.wid/2, object_tiles.hei/2};
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+		if(object_tiles.tiles[x][y] == UPSTAIRS)
+		{
+			upstairs.x = x;
+			upstairs.y = y;
+			break;
+		}
+
+	player.x = upstairs.x*SCALE;
+	player.y = (upstairs.y-1)*SCALE;
+	object_tiles.tiles[upstairs.x][upstairs.y-1] = EMPTY;
 	save_floor();
 }
 
@@ -607,28 +649,28 @@ void UpgradeMiningSkill()
 	mining_skill++; ore_value_multiplier = 1.0 + mining_skill * 0.05;
 }
 
-void DrawCompass() // for now, to make testing easier
+void DrawCompass(int object_type, Color col) // for now, to make testing easier
 {
 	Vector2 player_pos = (Vector2){player.x+player.width/2, player.y+player.height/2};
-	Vector2 stairs_pos = (Vector2){0, 0}, closest = (Vector2){0, 0};
+	Vector2 object_pos = (Vector2){0, 0}, closest = (Vector2){0, 0};
 	float min_dst = -1;
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.wid; y++)
 	{
-		if(object_tiles.tiles[x][y] == STAIRS || object_tiles.tiles[x][y] == ENTRANCE)
+		if(object_tiles.tiles[x][y] == object_type)
 		{
-			stairs_pos = (Vector2){x*SCALE, y*SCALE};
-			float dst = Vector2Distance(player_pos, stairs_pos);
+			object_pos = (Vector2){x*SCALE, y*SCALE};
+			float dst = Vector2Distance(player_pos, object_pos);
 			if(min_dst == -1 || dst < min_dst)
 			{
 				min_dst = dst;
-				closest = stairs_pos;
+				closest = object_pos;
 			}
 		}
 	}
 
 	Vector2 compass_arrow = Vector2Scale(Vector2Normalize(Vector2Subtract(closest, player_pos)), 20);
-	DrawLineV(player_pos, Vector2Add(player_pos, compass_arrow), BLUE);
+	DrawLineV(player_pos, Vector2Add(player_pos, compass_arrow), col);
 }
 
 int main()
@@ -734,7 +776,8 @@ int main()
 		DrawGroundTiles();
 		DrawObjectTiles();
 		DrawRectangleRec(player, RED);
-		DrawCompass();
+		DrawCompass(STAIRS, GREEN);
+		DrawCompass(UPSTAIRS, BLUE);
 		EndMode2D();
 
 		DisplayCoins();
@@ -772,8 +815,7 @@ int main()
 		int2 pos;
 		if(touches_stairs(player, &pos)) descend_stairs(pos.x, pos.y, 1);
 		else if(touches_entrance(player, &pos)) descend_stairs(pos.x, pos.y, 0);
-
-		if(IsKeyPressed(KEY_U)) // up
+		else if(touches_upstairs(player)) // up
 			ascend_floor();
 
 		DrawText(TextFormat("Floor: %d", mine_floor), 0, HEI-20, 20, WHITE);
