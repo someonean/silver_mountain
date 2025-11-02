@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <stdio.h>
 
+int worldseed = 0;
+
 typedef struct
 {
 	int wid, hei; // how many tiles high and wide
@@ -411,7 +413,7 @@ void generate_floor()
 	for(int i = 0; i < N_ORES; i++)
 		ore_frequencies[i] = ores[i].frequency;
 
-	int seed = 0;
+	int seed = worldseed;
 	for(int i = 0; i < depth; i++)
 		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
 	srand(seed);
@@ -678,6 +680,16 @@ int main()
 	char *ore_name; int prev_amount;
 	// both vars are for displaying the "Ore x amount" message at the bottom
 	// when mining
+
+	FILE *seedfile;
+
+	seedfile = fopen("seed.txt", "r");
+	if(seedfile != NULL) // if file exists
+	{
+		fscanf(seedfile, "%d", &worldseed);
+		printf("World seed set to %d.\n", worldseed);
+		fclose(seedfile);
+	}
 
 	InitWindow(WID, HEI, "Silver Mountain");
 	SetTargetFPS(60);
