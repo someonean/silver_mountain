@@ -12,11 +12,7 @@ typedef struct
 	int **tiles; // each number represents a type of tile
 } Tilemap;
 
-Tilemap ground_tiles, object_tiles;
-// Ground tiles(grass, dirt) are drawn underneath object tiles for decoration,
-// and the player interacts with the object tiles(walls, ores, etc.)
-
-enum GROUND_TILE_TYPES {DIRT, GRASS};
+Tilemap object_tiles;
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
@@ -147,22 +143,6 @@ int mining_skill_upgrade = 0;
 Camera2D camera = {0};
 
 int coins = 0;
-
-void DrawGroundTiles()
-{
-	for(int x = 0; x < ground_tiles.wid; x++)
-	for(int y = 0; y < ground_tiles.hei; y++)
-	{
-		Color c;
-		switch(ground_tiles.tiles[x][y])
-		{
-			case DIRT: c = BROWN; break;
-			case GRASS: c = GREEN; break;
-			default: c = BLACK; break;
-		}
-		DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, c);
-	}
-}
 
 void DrawOre(int x, int y, int type)
 {
@@ -678,17 +658,6 @@ int main()
 
 	InitWindow(WID, HEI, "Silver Mountain");
 	SetTargetFPS(60);
-
-	/*
-	ground_tiles.wid = ground_tiles.hei = 100;
-	ground_tiles.tiles = malloc(sizeof(int*)*ground_tiles.wid);
-	for(int x = 0; x < ground_tiles.wid; x++)
-	{
-		ground_tiles.tiles[x] = malloc(sizeof(int)*ground_tiles.hei);
-		for(int y = 0; y < ground_tiles.hei; y++)
-			ground_tiles.tiles[x][y] = GRASS;
-	}
-	*/
 
 	object_tiles.wid = object_tiles.hei = 100;
 	object_tiles.tiles = malloc(sizeof(int*)*object_tiles.wid);
