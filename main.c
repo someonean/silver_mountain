@@ -72,6 +72,9 @@ int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {	STONE,	SILVER,	GOLD,	RUBY,	SAPPHIRE}
 };
 
+Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
+{GREEN, BROWN, DARKGREEN, BLUE};
+
 int weighed_rand(int *prob_distribution, int width)
 {
 	int sum = 0, i;
@@ -137,8 +140,8 @@ int mining_skill_upgrade = 0;
 #define SCALE 50 // serves as both tile width and height
 
 // Map dimensions
-#define MAP_WID (ground_tiles.wid*SCALE)
-#define MAP_HEI (ground_tiles.hei*SCALE)
+#define MAP_WID (object_tiles.wid*SCALE)
+#define MAP_HEI (object_tiles.hei*SCALE)
 
 // Player camera
 Camera2D camera = {0};
@@ -418,11 +421,6 @@ void generate_floor()
 		seed ^= path[i].x ^ path[i].y ^ path[i].z ^ path[i].stairs;
 	srand(seed);
 
-	for(int x = 0; x < ground_tiles.wid; x++)
-	{
-		for(int y = 0; y < ground_tiles.hei; y++)
-			ground_tiles.tiles[x][y] = DIRT;
-	}
 	for(int x = 0; x < object_tiles.wid; x++)
 	{
 		for(int y = 0; y < object_tiles.hei; y++)
@@ -515,19 +513,6 @@ char load_floor()
 		}
 	}
 	fclose(f);
-
-	if(depth == 0)
-	{
-		for(int x = 0; x < ground_tiles.wid; x++)
-		for(int y = 0; y < ground_tiles.hei; y++)
-			ground_tiles.tiles[x][y] = GRASS;
-	}
-	else
-	{
-		for(int x = 0; x < ground_tiles.wid; x++)
-		for(int y = 0; y < ground_tiles.hei; y++)
-			ground_tiles.tiles[x][y] = DIRT;
-	}
 }
 
 void descend_stairs(int x, int y, char stairs)
@@ -694,6 +679,7 @@ int main()
 	InitWindow(WID, HEI, "Silver Mountain");
 	SetTargetFPS(60);
 
+	/*
 	ground_tiles.wid = ground_tiles.hei = 100;
 	ground_tiles.tiles = malloc(sizeof(int*)*ground_tiles.wid);
 	for(int x = 0; x < ground_tiles.wid; x++)
@@ -702,6 +688,7 @@ int main()
 		for(int y = 0; y < ground_tiles.hei; y++)
 			ground_tiles.tiles[x][y] = GRASS;
 	}
+	*/
 
 	object_tiles.wid = object_tiles.hei = 100;
 	object_tiles.tiles = malloc(sizeof(int*)*object_tiles.wid);
@@ -785,7 +772,7 @@ int main()
 		}
 
 		BeginMode2D(camera);
-		DrawGroundTiles();
+		DrawRectangle(0, 0, MAP_WID, MAP_HEI, tier_colors[tier]);
 		DrawObjectTiles();
 		DrawRectangleRec(player, RED);
 		DrawCompass(STAIRS, GREEN);
