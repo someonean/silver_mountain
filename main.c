@@ -432,6 +432,40 @@ void generate_floor()
 	place_random_upstairs();
 }
 
+char save_player_data()
+{
+	FILE *f = fopen("player.dat", "wb");
+	if(!f) return 0;
+
+	fwrite(&coins, sizeof(coins), 1, f);
+
+	fwrite(&mining_speed, sizeof(mining_speed), 1, f);
+	fwrite(&mining_power, sizeof(mining_power), 1, f);
+	fwrite(&mining_skill, sizeof(mining_skill), 1, f);
+	fclose(f);
+	return 1;
+}
+
+char load_player_data()
+{
+	FILE *f = fopen("player.dat", "rb");
+	if(!f) return 0;
+
+	fread(&coins, sizeof(coins), 1, f);
+
+	fread(&mining_speed, sizeof(mining_speed), 1, f);
+	fread(&mining_power, sizeof(mining_power), 1, f);
+	fread(&mining_skill, sizeof(mining_skill), 1, f);
+
+	fclose(f);
+
+	mining_delay = 1.0 / (1.0+mining_speed*0.05); //+5% to the boost of speed per upgrade
+	mining_damage = 2.0 * (1.0 + mining_power*0.05);
+	ore_value_multiplier = 1.0 + mining_skill*0.05;
+	total_level = mining_speed + mining_power + mining_skill;
+	return 1;
+}
+
 char save_floor()
 {
 	FILE *f = fopen("floor.dat", "wb");
@@ -678,6 +712,9 @@ int main()
 	camera.rotation = 0;
 	camera.zoom = 1.0;
 
+	load_player_data();
+	// if there is no player data, leaves the default values
+
 	while(!WindowShouldClose())
 	{
 		BeginDrawing();
@@ -790,5 +827,15 @@ int main()
 
 		EndDrawing();
 	}
+	save_floor();
+	// make sure to save the floor when exiting the game,
+	// and not just when we're leaving it for another floor
+
+	while(depth-- > 0) chdir("..");
+	// make sure we're at the top directory before we
+	// write the save file
+
+	save_player_data();
+
 	CloseWindow();
 }
