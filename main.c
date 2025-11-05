@@ -16,7 +16,7 @@ Tilemap object_tiles;
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
+enum ORE_TYPES {SEAL, STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
 typedef struct
@@ -29,6 +29,7 @@ typedef struct
 } Oreinfo;
 Oreinfo ores[N_ORES] =
 {
+{"Seal",	0,	0,	0,	0},
 {"Stone",	1,	1,	0,	10000},
 {"Bronze",	15,	10,	0,	500},
 {"Iron",	40,	20,	0,	100},
@@ -71,13 +72,15 @@ int tier_ores[MAX_TIERS][N_CATEGORIES] =
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
 {GREEN, BROWN, DARKGREEN, BLUE};
 
+float tier_seal_dps[MAX_TIERS] = {10, 20, 30}; // seal stone DPS check for each tier
+
 int weighed_rand(int *prob_distribution, int width)
 {
 	int sum = 0, i;
 	for(i = 0; i < width; i++) sum += prob_distribution[i];
 	int n = rand()%sum;
 	sum = 0;
-	for(i = 0; sum < n; i++) sum += prob_distribution[i];
+	for(i = 0; sum <= n; i++) sum += prob_distribution[i];
 	return i-1;
 }
 
@@ -85,6 +88,7 @@ typedef struct
 {
 	int type;
 	int amount;
+	float regen; // how much to regenerate per second; for seal stones
 	float wear; // how worn down the top ore piece is(goes from X to 0)
 } Ore;
 
@@ -148,6 +152,9 @@ void DrawOre(int x, int y, int type)
 {
 	switch(type)
 	{
+		case SEAL:
+			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, WHITE);
+			break;
 		case STONE:
 			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
 			break;
@@ -325,7 +332,11 @@ void place_random_entrance()
 	for(int j = -1; j <= 1; j++)
 			object_tiles.tiles[ent_x+i][ent_y+j] = WALL;
 	object_tiles.tiles[ent_x][ent_y] = ENTRANCE;
-	object_tiles.tiles[ent_x][ent_y+1] = EMPTY;
+	object_tiles.tiles[ent_x][ent_y+1] = ORE;
+	ore_map[ent_x][ent_y+1].type = SEAL;
+	ore_map[ent_x][ent_y+1].amount = 1;
+	ore_map[ent_x][ent_y+1].wear = mining_damage*2;
+	ore_map[ent_x][ent_y+1].regen = tier_seal_dps[tier-1];
 }
 
 void place_random_stairs()
@@ -413,6 +424,7 @@ void generate_floor()
 			ore_map[x][y].type = weighed_rand(ore_frequencies, N_ORES);
 			ore_map[x][y].amount = ores[ore_map[x][y].type].amount;
 			ore_map[x][y].wear = ores[ore_map[x][y].type].durability;
+			ore_map[x][y].regen = 0; // normal ores don't regenerate(for now)
 		}
 	}
 	int next_tier_chance = 0;
@@ -488,6 +500,7 @@ char save_floor()
 
 			fwrite(&ore_map[x][y].amount, sizeof(ore_map[x][y].amount), 1, f); // save ore amount
 			fwrite(&ore_map[x][y].wear, sizeof(ore_map[x][y].wear), 1, f); // save ore wear
+			fwrite(&ore_map[x][y].regen, sizeof(ore_map[x][y].regen), 1, f); // save ore regen value
 		}
 		else fputc(object_tiles.tiles[x][y], f);
 	}
@@ -521,6 +534,7 @@ char load_floor()
 				ore_map[x][y].type = ch - N_OBJECTS;
 				fread(&ore_map[x][y].amount, sizeof(ore_map[x][y].amount), 1, f); // load ore amount
 				fread(&ore_map[x][y].wear, sizeof(ore_map[x][y].wear), 1, f); // load ore wear
+				fread(&ore_map[x][y].regen, sizeof(ore_map[x][y].regen), 1, f); // load ore regen value
 			}
 			else
 				object_tiles.tiles[x][y] = ch;
@@ -674,6 +688,23 @@ void DrawCompass(int object_type, Color col) // for now, to make testing easier
 	DrawLineV(player_pos, Vector2Add(player_pos, compass_arrow), col);
 }
 
+void RegenerateOres(float dt) // only relevant to seal stones(for now)
+{
+	for(int x = 0; x < object_tiles.wid; x++)
+	for(int y = 0; y < object_tiles.hei; y++)
+	{
+		if(object_tiles.tiles[x][y] == ORE)
+		{
+			if(ore_map[x][y].wear < ores[ore_map[x][y].type].durability)
+			{
+				ore_map[x][y].wear += dt*ore_map[x][y].regen;
+				if(ore_map[x][y].wear > ores[ore_map[x][y].type].durability)
+					ore_map[x][y].wear = ores[ore_map[x][y].type].durability;
+			}
+		}
+	}
+}
+
 int main()
 {
 	char *ore_name; int prev_amount;
@@ -788,6 +819,8 @@ int main()
 		DisplayCoins();
 		DisplayUpgradeCosts();
 
+		ores[SEAL].durability = mining_damage*2;
+		RegenerateOres(dt);
 		if(player_mode == MINING)
 		{
 			int2 t = mining_target;
@@ -803,9 +836,14 @@ int main()
 					coins += ore_value_multiplier*ores[ore_map[t.x][t.y].type].value;
 					if(ore_map[t.x][t.y].amount <= 0)
 					{
-						ore_map[t.x][t.y].type = tier_ores[tier-1][RUBBLE];
-						ore_map[t.x][t.y].amount = 10000;
-						ore_map[t.x][t.y].wear = ores[tier_ores[tier-1][RUBBLE]].durability;
+						if(ore_map[t.x][t.y].type == SEAL)
+							object_tiles.tiles[t.x][t.y] = EMPTY;
+						else
+						{
+							ore_map[t.x][t.y].type = tier_ores[tier-1][RUBBLE];
+							ore_map[t.x][t.y].amount = 10000;
+							ore_map[t.x][t.y].wear = ores[tier_ores[tier-1][RUBBLE]].durability;
+						}
 						player_mode = MOVING;
 						time_since_last_mined = 0;
 						break;
