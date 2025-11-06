@@ -72,7 +72,7 @@ int tier_ores[MAX_TIERS][N_CATEGORIES] =
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
 {GREEN, BROWN, DARKGREEN, BLUE};
 
-float tier_seal_dps[MAX_TIERS] = {10, 20, 30}; // seal stone DPS check for each tier
+float tier_seal_dps[MAX_TIERS] = {1, 2, 3}; // seal stone DPS check for each tier
 
 int weighed_rand(int *prob_distribution, int width)
 {
@@ -122,6 +122,15 @@ typedef struct
 	int y;
 } int2; // for integer coordinates
 int2 mining_target = {-1,-1};
+
+typedef struct
+{
+	int depth;
+	int2 *path; // series of entrance coordinates
+	char *name;
+} Checkpoint;
+Checkpoint *checkpoints = NULL;
+int ncheckpoints = 0;
 
 float time_since_last_mined, mining_delay = 1.0;
 int total_level = 0;
@@ -543,8 +552,13 @@ char load_floor()
 	fclose(f);
 }
 
-void descend_stairs(int x, int y, char stairs)
+void AddCheckpoint();
+// forward declaration, so that descend_floor() knows AddCheckpoint() exists
+
+void descend_floor(int x, int y)
 {
+	char stairs = object_tiles.tiles[x][y]==STAIRS;
+
 	depth++;
 	path = realloc(path, sizeof(MPath)*depth);
 	path[depth-1].x = x;
@@ -590,6 +604,9 @@ void descend_stairs(int x, int y, char stairs)
 	player.y = (upstairs.y-1)*SCALE;
 	object_tiles.tiles[upstairs.x][upstairs.y-1] = EMPTY;
 	save_floor();
+
+	if(!stairs) // if this is a new mine
+		AddCheckpoint();
 }
 
 void ascend_floor()
@@ -705,6 +722,67 @@ void RegenerateOres(float dt) // only relevant to seal stones(for now)
 	}
 }
 
+void AddCheckpoint() // add current place as a checkpoint
+{
+	// check if the same checkpoint has already been added:
+	for(int i = 0; i < ncheckpoints; i++)
+	{
+		if(checkpoints[i].depth != depth) continue;
+
+		int j;
+		for(j = 0; j < depth; j++)
+			if(checkpoints[i].path[j].x != path[j].x || checkpoints[i].path[j].y != path[j].y)
+				break;
+
+		if(j == depth) // duplicate checkpoint found
+			return;
+	}
+
+	Checkpoint chkp;
+	chkp.depth = depth;
+	if(depth > 0)
+	{
+		chkp.path = malloc(sizeof(*chkp.path)*depth);
+		for(int i = 0; i < depth; i++)
+			chkp.path[i] = (int2){path[i].x, path[i].y};
+	}
+	else chkp.path = NULL;
+
+	chkp.name = NULL; // this will come in later
+
+	checkpoints = realloc(checkpoints, ++ncheckpoints*sizeof(*checkpoints));
+	checkpoints[ncheckpoints-1] = chkp;
+}
+
+void GoToCheckpoint(int i)
+{
+	while(depth-- > 0)
+		chdir("..");
+	depth = 0;
+	free(path); path = NULL;
+	tier = 0;
+	mine_floor = 1;
+
+	load_floor(); // load surface floor
+
+	for(int j = 0; j < checkpoints[i].depth; j++)
+		descend_floor(checkpoints[i].path[j].x, checkpoints[i].path[j].y);
+
+	ascend_floor();
+	// let the player end up at the entrance again
+}
+
+void RemoveCheckpoint(int i)
+{
+	free(checkpoints[i].path);
+	free(checkpoints[i].name);
+
+	for(int j = i; j < ncheckpoints-1; j++)
+		checkpoints[j] = checkpoints[j+1];
+
+	checkpoints = realloc(checkpoints, --ncheckpoints*sizeof(*checkpoints));
+}
+
 int main()
 {
 	char *ore_name; int prev_amount;
@@ -738,6 +816,7 @@ int main()
 		ore_map[x] = malloc(sizeof(Ore)*object_tiles.hei);
 
 	generate_floor(); // Because the depth is 0, it will generate the surface "floor"
+	save_floor();
 
 	camera.offset = (Vector2){WID/2, HEI/2};
 	camera.rotation = 0;
@@ -745,6 +824,9 @@ int main()
 
 	load_player_data();
 	// if there is no player data, leaves the default values
+
+	int which_checkpoint = 0;
+	// which checkpoint we're currently cycling through(the index)
 
 	while(!WindowShouldClose())
 	{
@@ -765,6 +847,13 @@ int main()
 			UpgradeMiningPower();
 		if(IsKeyPressed(KEY_X))
 			UpgradeMiningSkill();
+
+		if(IsKeyPressed(KEY_C) && ncheckpoints > 0) // cycle checkpoints
+		{
+			which_checkpoint++;
+			which_checkpoint %= ncheckpoints;
+			GoToCheckpoint(which_checkpoint);
+		}
 
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
@@ -856,8 +945,8 @@ int main()
 		}
 
 		int2 pos;
-		if(touches_stairs(player, &pos)) descend_stairs(pos.x, pos.y, 1);
-		else if(touches_entrance(player, &pos)) descend_stairs(pos.x, pos.y, 0);
+		if(touches_stairs(player, &pos)) descend_floor(pos.x, pos.y);
+		else if(touches_entrance(player, &pos)) descend_floor(pos.x, pos.y);
 		else if(touches_upstairs(player)) // up
 			ascend_floor();
 
