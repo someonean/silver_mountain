@@ -453,6 +453,40 @@ void generate_floor()
 	place_random_upstairs();
 }
 
+void save_checkpoints(FILE *f)
+{
+	fwrite(&ncheckpoints, sizeof(ncheckpoints), 1, f);
+	for(int i = 0; i < ncheckpoints; i++)
+	{
+		if(checkpoints[i].depth < 0) checkpoints[i].depth = 0;
+		fwrite(&checkpoints[i].depth, sizeof(checkpoints[i].depth), 1, f);
+		fwrite(checkpoints[i].path, sizeof(checkpoints[i].path), checkpoints[i].depth, f);
+	}
+}
+
+void load_checkpoints(FILE *f)
+{
+	fread(&ncheckpoints, sizeof(ncheckpoints), 1, f);
+
+	if(checkpoints != NULL)
+	{
+		free(checkpoints);
+		checkpoints = NULL;
+	}
+	checkpoints = malloc(sizeof(*checkpoints)*ncheckpoints);
+
+	for(int i = 0; i < ncheckpoints; i++)
+	{
+		fread(&checkpoints[i].depth, sizeof(checkpoints[i].depth), 1, f);
+		if(checkpoints[i].depth > 0)
+		{
+			checkpoints[i].path = malloc(sizeof(checkpoints[i].path)*checkpoints[i].depth);
+			fread(checkpoints[i].path, sizeof(checkpoints[i].path), checkpoints[i].depth, f);
+		}
+		else checkpoints[i].path = NULL;
+	}
+}
+
 char save_player_data()
 {
 	FILE *f = fopen("player.dat", "wb");
@@ -463,6 +497,8 @@ char save_player_data()
 	fwrite(&mining_speed, sizeof(mining_speed), 1, f);
 	fwrite(&mining_power, sizeof(mining_power), 1, f);
 	fwrite(&mining_skill, sizeof(mining_skill), 1, f);
+
+	save_checkpoints(f);
 	fclose(f);
 	return 1;
 }
@@ -478,6 +514,7 @@ char load_player_data()
 	fread(&mining_power, sizeof(mining_power), 1, f);
 	fread(&mining_skill, sizeof(mining_skill), 1, f);
 
+	load_checkpoints(f);
 	fclose(f);
 
 	mining_delay = 1.0 / (1.0+mining_speed*0.05); //+5% to the boost of speed per upgrade
