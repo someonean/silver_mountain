@@ -793,6 +793,8 @@ void AddCheckpoint() // add current place as a checkpoint
 
 void GoToCheckpoint(int i)
 {
+	save_floor(); // save current floor
+
 	while(depth-- > 0)
 		chdir("..");
 	depth = 0;
