@@ -890,6 +890,7 @@ int main()
 			which_checkpoint++;
 			which_checkpoint %= ncheckpoints;
 			GoToCheckpoint(which_checkpoint);
+			player_mode = MOVING;
 		}
 
 		Rectangle prev_player_pos = player;
