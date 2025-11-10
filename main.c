@@ -16,7 +16,7 @@ Tilemap object_tiles;
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {SEAL, STONE, BRONZE, IRON, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
+enum ORE_TYPES {SEAL, STONE, BRONZE, IRON, AMETHYST, LAPIS, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
 typedef struct
@@ -26,18 +26,22 @@ typedef struct
 	int durability;
 	int frequency;
 	int amount;
+	Color bg; // background/base color
+	Color fg; // foreground/vein color
 } Oreinfo;
 Oreinfo ores[N_ORES] =
 {
-{"Seal",	0,	0,	0,	0},
-{"Stone",	1,	1,	0,	10000},
-{"Bronze",	15,	10,	0,	500},
-{"Iron",	40,	20,	0,	100},
-{"Silver",	75,	30,	0,	50},
-{"Gold",	180,	100,	0,	10},
-{"Ruby",	300,	20,	0,	5},
-{"Sapphire",	350,	20,	0,	5},
-{"Emerald",	400,	20,	0,	5},
+{"Seal",	0,	0,	0,	0,	WHITE,	WHITE},
+{"Stone",	1,	1,	0,	0,	GRAY,	GRAY},
+{"Bronze",	15,	10,	0,	0,	GRAY,	BROWN},
+{"Iron",	40,	20,	0,	0,	GRAY,	BLACK},
+{"Amethyst",	50,	25,	0,	0,	GRAY,	PURPLE},
+{"Lapis",	60,	25,	0,	0,	GRAY,	DARKBLUE},
+{"Silver",	75,	30,	0,	0,	GRAY,	LIGHTGRAY},
+{"Gold",	180,	100,	0,	0,	GRAY,	YELLOW},
+{"Ruby",	300,	20,	0,	0,	GRAY,	RED},
+{"Sapphire",	350,	20,	0,	0,	GRAY,	BLUE},
+{"Emerald",	400,	20,	0,	0,	GRAY,	GREEN},
 };
 // the frequencies and amounts are set dynamically later, depending on the tier
 
@@ -63,10 +67,10 @@ int ore_frequencies[N_ORES]; // still around, cause it's more convenient for wei
 #define MAX_TIERS 3
 int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
-//	RUBBLE	MASS	MAIN	RARE	SRARE
-{	STONE,	BRONZE,	IRON,	SILVER,	GOLD},
-{	STONE,	IRON,	SILVER,	GOLD,	RUBY},
-{	STONE,	SILVER,	GOLD,	RUBY,	SAPPHIRE}
+//	RUBBLE	MASS	MAIN	RARE		SRARE
+{	STONE,	BRONZE,	IRON,	AMETHYST,	LAPIS},
+{	STONE,	IRON,	SILVER,	GOLD,		RUBY},
+{	STONE,	SILVER,	GOLD,	RUBY,		SAPPHIRE}
 };
 
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
@@ -159,47 +163,11 @@ int coins = 0;
 
 void DrawOre(int x, int y, int type)
 {
-	switch(type)
-	{
-		case SEAL:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, WHITE);
-			break;
-		case STONE:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			break;
-		case BRONZE:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BROWN);
-			break;
-		case IRON:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BLACK);
-			break;
-		case SILVER:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			// stone base
-
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, LIGHTGRAY);
-			// draw ores with a half-square in the middle of
-			// the stone base(until textures come in)
-			break;
-		case GOLD:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, YELLOW);
-			break;
-		case RUBY:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, RED);
-			break;
-		case SAPPHIRE:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, BLUE);
-			break;
-		case EMERALD:
-			DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, GRAY);
-			DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, GREEN);
-			break;
-	}
+	Color bg, fg;
+	bg = ores[type].bg;
+	fg = ores[type].fg;
+	DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, bg);
+	DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, fg);
 }
 
 void DrawObjectTiles()
