@@ -16,7 +16,7 @@ Tilemap object_tiles;
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {SEAL, STONE, BRONZE, IRON, AMETHYST, LAPIS, SILVER, GOLD, RUBY, SAPPHIRE, EMERALD, N_ORES};
+enum ORE_TYPES {SEAL, STONE, COPPER, IRON, AMETHYST, LAPIS, SILVER, GOLD, RUBY, SAPPHIRE, TOPAZ, AQUAMARINE, NICKEL, TIN, EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
 typedef struct
@@ -33,7 +33,7 @@ Oreinfo ores[N_ORES] =
 {
 {"Seal",	0,	0,	0,	0,	WHITE,	WHITE},
 {"Stone",	1,	1,	0,	0,	GRAY,	GRAY},
-{"Bronze",	15,	10,	0,	0,	GRAY,	BROWN},
+{"Copper",	15,	10,	0,	0,	GRAY,	BROWN},
 {"Iron",	40,	20,	0,	0,	GRAY,	BLACK},
 {"Amethyst",	50,	25,	0,	0,	GRAY,	PURPLE},
 {"Lapis",	60,	25,	0,	0,	GRAY,	DARKBLUE},
@@ -41,36 +41,23 @@ Oreinfo ores[N_ORES] =
 {"Gold",	180,	100,	0,	0,	GRAY,	YELLOW},
 {"Ruby",	300,	20,	0,	0,	GRAY,	RED},
 {"Sapphire",	350,	20,	0,	0,	GRAY,	BLUE},
+{"Topaz",	350,	20,	0,	0,	GRAY,	ORANGE},
+{"Aquamarine",	350,	20,	0,	0,	GRAY,	SKYBLUE},
+{"Nickel",	350,	20,	0,	0,	GRAY,	DARKGRAY},
+{"Tin",		350,	20,	0,	0,	GRAY,	DARKGRAY},
 {"Emerald",	400,	20,	0,	0,	GRAY,	GREEN},
 };
 // the frequencies and amounts are set dynamically later, depending on the tier
 
 int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
-//We have to make the ores work like this:
-// {"Ore Name", ore_max_hp, ore_value, ore_type (the type defines the max amount and the frequency), mine tier that it's met in}
-//ores[1] = {"Stone", 5, 1, RUBBLE, 1};
-//ores[2] = {"Copper", 7, 14, MASS, 1};
-//ores[3] = {"Iron", 11, 43, MAIN, 1};
-//ores[4] = {"Amethyst", 21, 512, RARE, 1};
-//ores[5] = {"Lapis", 32, 2304, SUPER, 1};
-//ores[6] = {"Silver", 12, 23, MASS, 2};
-//ores[7] = {"Gold", 17, 70, MAIN, 2};
-//ores[8] = {"Sapphire", 36, 868, RARE, 2};
-//ores[9] = {"Ruby", 54, 3906, SUPER, 2};
-
-
-// The ores now work with a struct, as suggested(should've done it a while ago).
-// The frequency/amount system seems more flexible for now, but we'll see.
-
-
 #define MAX_TIERS 3
 int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
 //	RUBBLE	MASS	MAIN	RARE		SRARE
-{	STONE,	BRONZE,	IRON,	AMETHYST,	LAPIS},
-{	STONE,	IRON,	SILVER,	GOLD,		RUBY},
-{	STONE,	SILVER,	GOLD,	RUBY,		SAPPHIRE}
+{	STONE,	COPPER,	IRON,	AMETHYST,	LAPIS},
+{	STONE,	SILVER, GOLD,	RUBY,		SAPPHIRE},
+{	STONE,	TIN,	NICKEL,	AQUAMARINE,	TOPAZ}
 };
 
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
