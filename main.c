@@ -16,7 +16,12 @@ Tilemap object_tiles;
 enum OBJECT_TILE_TYPES {EMPTY, WALL, ORE, STAIRS, UPSTAIRS, ENTRANCE, N_OBJECTS};
 
 #undef GOLD // raylib defines this as a color, interfering with the enum
-enum ORE_TYPES {SEAL, STONE, COPPER, IRON, AMETHYST, LAPIS, SILVER, GOLD, RUBY, SAPPHIRE, TOPAZ, AQUAMARINE, NICKEL, TIN, EMERALD, N_ORES};
+enum ORE_TYPES {SEAL, STONE,
+COPPER, IRON, AMETHYST, LAPIS,
+SILVER, GOLD, RUBY, SAPPHIRE,
+TOPAZ, AQUAMARINE, NICKEL, TIN,
+SULFUR, COBALT, PYRITE, GARNET,
+EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
 typedef struct
@@ -29,39 +34,47 @@ typedef struct
 	Color bg; // background/base color
 	Color fg; // foreground/vein color
 } Oreinfo;
+
+#define C_PYRITE (Color){180, 162, 103}
+
 Oreinfo ores[N_ORES] =
 {
-{"Seal",	0,	0,	0,	0,	WHITE,	WHITE},
-{"Stone",	1,	1,	0,	0,	GRAY,	GRAY},
-{"Copper",	15,	10,	0,	0,	GRAY,	BROWN},
-{"Iron",	40,	20,	0,	0,	GRAY,	BLACK},
-{"Amethyst",	50,	25,	0,	0,	GRAY,	PURPLE},
-{"Lapis",	60,	25,	0,	0,	GRAY,	DARKBLUE},
-{"Silver",	75,	30,	0,	0,	GRAY,	LIGHTGRAY},
-{"Gold",	180,	100,	0,	0,	GRAY,	YELLOW},
-{"Ruby",	300,	20,	0,	0,	GRAY,	RED},
-{"Sapphire",	350,	20,	0,	0,	GRAY,	BLUE},
-{"Topaz",	350,	20,	0,	0,	GRAY,	ORANGE},
-{"Aquamarine",	350,	20,	0,	0,	GRAY,	SKYBLUE},
-{"Nickel",	350,	20,	0,	0,	GRAY,	DARKGRAY},
-{"Tin",		350,	20,	0,	0,	GRAY,	DARKGRAY},
-{"Emerald",	400,	20,	0,	0,	GRAY,	GREEN},
+{"Seal",	0,	0,	0,	0,	WHITE,		WHITE},
+{"Stone",	1,	1,	0,	0,	GRAY,		GRAY},
+{"Copper",	15,	10,	0,	0,	GRAY,		BROWN},
+{"Iron",	40,	20,	0,	0,	GRAY,		BLACK},
+{"Amethyst",	50,	25,	0,	0,	GRAY,		PURPLE},
+{"Lapis",	60,	25,	0,	0,	GRAY,		DARKBLUE},
+{"Silver",	75,	30,	0,	0,	GRAY,		LIGHTGRAY},
+{"Gold",	180,	100,	0,	0,	GRAY,		YELLOW},
+{"Ruby",	300,	20,	0,	0,	GRAY,		RED},
+{"Sapphire",	350,	20,	0,	0,	GRAY,		BLUE},
+{"Topaz",	350,	20,	0,	0,	GRAY,		ORANGE},
+{"Aquamarine",	350,	20,	0,	0,	GRAY,		SKYBLUE},
+{"Nickel",	350,	20,	0,	0,	GRAY,		DARKGRAY},
+{"Tin",		350,	20,	0,	0,	GRAY,		DARKGRAY},
+{"Sulfur",	350,	20,	0,	0,	DARKGRAY,	YELLOW},
+{"Cobalt",	350,	20,	0,	0,	DARKGRAY,	DARKBLUE},
+{"Pyrite",	350,	20,	0,	0,	GRAY,		C_PYRITE},
+{"Garnet",	350,	20,	0,	0,	GRAY,		MAROON},
+{"Emerald",	400,	20,	0,	0,	GRAY,		GREEN},
 };
 // the frequencies and amounts are set dynamically later, depending on the tier
 
 int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
-#define MAX_TIERS 3
+#define MAX_TIERS 4
 int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
 //	RUBBLE	MASS	MAIN	RARE		SRARE
 {	STONE,	COPPER,	IRON,	AMETHYST,	LAPIS},
 {	STONE,	SILVER, GOLD,	RUBY,		SAPPHIRE},
-{	STONE,	TIN,	NICKEL,	AQUAMARINE,	TOPAZ}
+{	STONE,	TIN,	NICKEL,	AQUAMARINE,	TOPAZ},
+{	STONE,	SULFUR,	COBALT,	PYRITE,		GARNET}
 };
 
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
-{GREEN, BROWN, DARKGREEN, BLUE};
+{GREEN, BROWN, DARKGREEN, BLUE, RED};
 
 float tier_seal_dps[MAX_TIERS] = {1, 2, 3}; // seal stone DPS check for each tier
 
