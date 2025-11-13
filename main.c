@@ -21,6 +21,7 @@ COPPER, IRON, AMETHYST, LAPIS,
 SILVER, GOLD, RUBY, SAPPHIRE,
 TOPAZ, AQUAMARINE, NICKEL, TIN,
 SULFUR, COBALT, PYRITE, GARNET,
+LEAD, ZINC, TURQUOISE, ALEXANDRITE,
 EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
@@ -36,6 +37,7 @@ typedef struct
 } Oreinfo;
 
 #define C_PYRITE (Color){180, 162, 103}
+#define C_TURQUOISE (Color){14, 178, 178}
 
 Oreinfo ores[N_ORES] =
 {
@@ -57,24 +59,29 @@ Oreinfo ores[N_ORES] =
 {"Cobalt",	350,	20,	0,	0,	DARKGRAY,	DARKBLUE},
 {"Pyrite",	350,	20,	0,	0,	GRAY,		C_PYRITE},
 {"Garnet",	350,	20,	0,	0,	GRAY,		MAROON},
+{"Lead",	350,	20,	0,	0,	GRAY,		DARKGRAY},
+{"Zinc",	350,	20,	0,	0,	GRAY,		LIGHTGRAY},
+{"Turquoise",	350,	20,	0,	0,	GRAY,		C_TURQUOISE},
+{"Alexandrite",	350,	20,	0,	0,	PURPLE,		DARKGREEN},
 {"Emerald",	400,	20,	0,	0,	GRAY,		GREEN},
 };
 // the frequencies and amounts are set dynamically later, depending on the tier
 
 int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
-#define MAX_TIERS 4
+#define MAX_TIERS 5
 int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
 //	RUBBLE	MASS	MAIN	RARE		SRARE
 {	STONE,	COPPER,	IRON,	AMETHYST,	LAPIS},
 {	STONE,	SILVER, GOLD,	RUBY,		SAPPHIRE},
 {	STONE,	TIN,	NICKEL,	AQUAMARINE,	TOPAZ},
-{	STONE,	SULFUR,	COBALT,	PYRITE,		GARNET}
+{	STONE,	SULFUR,	COBALT,	PYRITE,		GARNET},
+{	STONE,	LEAD,	ZINC,	TURQUOISE,	ALEXANDRITE},
 };
 
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
-{GREEN, BROWN, DARKGREEN, BLUE, RED};
+{GREEN, BROWN, DARKGREEN, BLUE, RED, DARKBROWN};
 
 float tier_seal_dps[MAX_TIERS] = {1, 2, 3, 4}; // seal stone DPS check for each tier
 
