@@ -83,7 +83,7 @@ int tier_ores[MAX_TIERS][N_CATEGORIES] =
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
 {GREEN, BROWN, DARKGREEN, BLUE, RED, DARKBROWN};
 
-float tier_seal_dps[MAX_TIERS] = {1, 2, 3, 4}; // seal stone DPS check for each tier
+float tier_seal_dps[MAX_TIERS] = {1, 2, 3, 4, 5}; // seal stone DPS check for each tier
 
 int weighed_rand(int *prob_distribution, int width)
 {
