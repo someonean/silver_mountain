@@ -22,6 +22,7 @@ SILVER, GOLD, RUBY, SAPPHIRE,
 TOPAZ, AQUAMARINE, NICKEL, TIN,
 SULFUR, COBALT, PYRITE, GARNET,
 LEAD, ZINC, TURQUOISE, ALEXANDRITE,
+ALUMINUM, PLATINUM, MOONSTONE, OPAL,
 EMERALD, N_ORES};
 enum ORE_CATEGORIES {RUBBLE, MASS, MAIN, RARE, SRARE, N_CATEGORIES};
 
@@ -38,6 +39,8 @@ typedef struct
 
 #define C_PYRITE (Color){180, 162, 103}
 #define C_TURQUOISE (Color){14, 178, 178}
+#define C_OPAL_BG (Color){95, 129, 247}
+#define C_OPAL_FG (Color){13, 251, 139}
 
 Oreinfo ores[N_ORES] =
 {
@@ -63,27 +66,32 @@ Oreinfo ores[N_ORES] =
 {"Zinc",	350,	20,	0,	0,	GRAY,		LIGHTGRAY},
 {"Turquoise",	350,	20,	0,	0,	GRAY,		C_TURQUOISE},
 {"Alexandrite",	350,	20,	0,	0,	PURPLE,		DARKGREEN},
+{"Aluminum",	350,	20,	0,	0,	DARKGRAY,	LIGHTGRAY},
+{"Platinum",	350,	20,	0,	0,	GRAY,		WHITE},
+{"Moonstone",	350,	20,	0,	0,	SKYBLUE,	WHITE},
+{"Opal",	350,	20,	0,	0,	C_OPAL_BG,	C_OPAL_FG},
 {"Emerald",	400,	20,	0,	0,	GRAY,		GREEN},
 };
 // the frequencies and amounts are set dynamically later, depending on the tier
 
 int ore_frequencies[N_ORES]; // still around, cause it's more convenient for weighed_rand()
 
-#define MAX_TIERS 5
+#define MAX_TIERS 6
 int tier_ores[MAX_TIERS][N_CATEGORIES] =
 {
-//	RUBBLE	MASS	MAIN	RARE		SRARE
-{	STONE,	COPPER,	IRON,	AMETHYST,	LAPIS},
-{	STONE,	SILVER, GOLD,	RUBY,		SAPPHIRE},
-{	STONE,	TIN,	NICKEL,	AQUAMARINE,	TOPAZ},
-{	STONE,	SULFUR,	COBALT,	PYRITE,		GARNET},
-{	STONE,	LEAD,	ZINC,	TURQUOISE,	ALEXANDRITE},
+//	RUBBLE	MASS		MAIN		RARE		SRARE
+{	STONE,	COPPER,		IRON,		AMETHYST,	LAPIS},
+{	STONE,	SILVER, 	GOLD,		RUBY,		SAPPHIRE},
+{	STONE,	TIN,		NICKEL,		AQUAMARINE,	TOPAZ},
+{	STONE,	SULFUR,		COBALT,		PYRITE,		GARNET},
+{	STONE,	LEAD,		ZINC,		TURQUOISE,	ALEXANDRITE},
+{	STONE,	ALUMINUM,	PLATINUM,	MOONSTONE,	OPAL},
 };
 
 Color tier_colors[MAX_TIERS+1] = // including 0th tier, aka the surface
-{GREEN, BROWN, DARKGREEN, BLUE, RED, DARKBROWN};
+{GREEN, BROWN, DARKGREEN, BLUE, RED, DARKBROWN, DARKBLUE};
 
-float tier_seal_dps[MAX_TIERS] = {1, 2, 3, 4, 5}; // seal stone DPS check for each tier
+float tier_seal_dps[MAX_TIERS] = {1, 2, 3, 4, 5, 6}; // seal stone DPS check for each tier
 
 int weighed_rand(int *prob_distribution, int width)
 {
