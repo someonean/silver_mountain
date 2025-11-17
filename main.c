@@ -117,9 +117,6 @@ Ore **ore_map;
 #define WID 800
 #define HEI 600
 
-Rectangle player = {0, 0, 49, 49}; // x, y, w, h
-//Todo: make another rectangle which is the player hitbox {0, 0, 35, 35}
-
 enum player_modes {MOVING, MINING};
 int player_mode = MOVING;
 int tier = 0; // surface layer is of tier 0
@@ -170,6 +167,9 @@ int mining_skill_upgrade = 0;
 // Map dimensions
 #define MAP_WID (object_tiles.wid*SCALE)
 #define MAP_HEI (object_tiles.hei*SCALE)
+
+Rectangle player = {0, 0, 49*SCALE/50, 49*SCALE/50}; // x, y, w, h
+//Todo: make another rectangle which is the player hitbox {0, 0, 35, 35}
 
 // Player camera
 Camera2D camera = {0};
@@ -880,13 +880,13 @@ int main()
 
 		Rectangle prev_player_pos = player;
 		if(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
-			player.y -= dt*PLAYER_SPEED;
+			player.y -= dt*PLAYER_SPEED*SCALE/50;
 		if(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-			player.x -= dt*PLAYER_SPEED;
+			player.x -= dt*PLAYER_SPEED*SCALE/50;
 		if(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
-			player.y += dt*PLAYER_SPEED;
+			player.y += dt*PLAYER_SPEED*SCALE/50;
 		if(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
-			player.x += dt*PLAYER_SPEED;
+			player.x += dt*PLAYER_SPEED*SCALE/50;
 
 		collide_with_walls(&player, prev_player_pos);
 
