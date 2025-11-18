@@ -797,7 +797,7 @@ void GoToCheckpoint(int i)
 void RemoveCheckpoint(int i)
 {
 	free(checkpoints[i].path);
-	free(checkpoints[i].name);
+	if(checkpoints[i].name != NULL) free(checkpoints[i].name);
 
 	for(int j = i; j < ncheckpoints-1; j++)
 		checkpoints[j] = checkpoints[j+1];
@@ -876,6 +876,10 @@ int main()
 			which_checkpoint %= ncheckpoints;
 			GoToCheckpoint(which_checkpoint);
 			player_mode = MOVING;
+		}
+		if(IsKeyPressed(KEY_R) && ncheckpoints > 0) // remove checkpoint
+		{
+			RemoveCheckpoint(which_checkpoint);
 		}
 
 		Rectangle prev_player_pos = player;
