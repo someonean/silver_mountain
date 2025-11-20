@@ -176,16 +176,19 @@ Camera2D camera = {0};
 
 int coins = 0;
 
-void DrawOre(int x, int y, int type)
+void DrawOre(int x, int y, int type, char mined)
 {
 	Color bg, fg;
 	bg = ores[type].bg;
 	fg = ores[type].fg;
 	DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, bg);
-	DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, fg);
+	if(!mined)
+		DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, fg);
+	else
+		DrawRectangle(x*SCALE+SCALE/3, y*SCALE+SCALE/3, SCALE/3, SCALE/3, fg);
 }
 
-void DrawObjectTiles()
+void DrawObjectTiles(int2 mined_tile, float time_since_last_mined)
 {
 	for(int x = 0; x < object_tiles.wid; x++)
 	for(int y = 0; y < object_tiles.hei; y++)
@@ -197,7 +200,16 @@ void DrawObjectTiles()
 			case STAIRS: c = BLACK; break;
 			case UPSTAIRS: c = SKYBLUE; break;
 			case ENTRANCE: c = DARKBROWN; break;
-			case ORE: DrawOre(x, y, ore_map[x][y].type);
+			case ORE:
+				char mined = 0;
+				if(mined_tile.x == x && mined_tile.y == y)
+					mined = 1;
+
+				if(time_since_last_mined > mining_delay/5)
+					mined = 0;
+				// the animation only lasts 1/5 of the mining cycle
+
+				DrawOre(x, y, ore_map[x][y].type, mined);
 			default: continue;
 		}
 		if(object_tiles.tiles[x][y] != ORE)
@@ -924,9 +936,12 @@ int main()
 			}
 		}
 
+		if(player_mode == MOVING)
+			mining_target = (int2){-1, -1};
+
 		BeginMode2D(camera);
 		DrawRectangle(0, 0, MAP_WID, MAP_HEI, tier_colors[tier]);
-		DrawObjectTiles();
+		DrawObjectTiles(mining_target, time_since_last_mined);
 		DrawRectangleRec(player, RED);
 		DrawCompass(STAIRS, GREEN);
 		DrawCompass(UPSTAIRS, BLUE);
