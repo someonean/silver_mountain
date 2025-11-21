@@ -176,16 +176,31 @@ Camera2D camera = {0};
 
 int coins = 0;
 
+void Draw8by8dot(int x, int y, int dx, int dy, Color c)
+// x, y - tile coords; dx, dy - dot coords;
+{
+	DrawRectangle(x*SCALE+dx*SCALE/8, y*SCALE+dy*SCALE/8, SCALE/8, SCALE/8, c);
+}
+
 void DrawOre(int x, int y, int type, char mined)
 {
 	Color bg, fg;
 	bg = ores[type].bg;
 	fg = ores[type].fg;
-	DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, bg);
 	if(!mined)
-		DrawRectangle(x*SCALE+SCALE/4, y*SCALE+SCALE/4, SCALE/2, SCALE/2, fg);
+		DrawRectangle(x*SCALE, y*SCALE, SCALE, SCALE, bg);
 	else
-		DrawRectangle(x*SCALE+SCALE/3, y*SCALE+SCALE/3, SCALE/3, SCALE/3, fg);
+		DrawRectangle(x*SCALE-SCALE/8, y*SCALE-SCALE/8, 10*SCALE/8, 10*SCALE/8, bg);
+		// base rectangle is slightly bigger during the mining animation
+
+	Draw8by8dot(x, y, 2, 0, fg);
+	Draw8by8dot(x, y, 6, 1, fg);
+	Draw8by8dot(x, y, 0, 2, fg);
+	Draw8by8dot(x, y, 5, 3, fg);
+	Draw8by8dot(x, y, 2, 4, fg);
+	Draw8by8dot(x, y, 0, 6, fg);
+	Draw8by8dot(x, y, 4, 6, fg);
+	Draw8by8dot(x, y, 7, 7, fg);
 }
 
 void DrawObjectTiles(int2 mined_tile, float time_since_last_mined)
